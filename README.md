@@ -1,3 +1,10 @@
+# Questions for Viktor and Oscar:
+     1. Do I have too many in-text comments? E.g. in pre-processing function. Should I put these in the functions docstring instead? What's the best practice here?
+     2. Do you have any input on smarter solutions to the optimization problem?
+     3. I need to add ~4 more plotting functions for different kinds of plots. How should I go about making that in a nice way?
+     4. Currently, this is implementing a well-established method called the Synthetic Control Method. I, as part of my thesis, plan on implementing an extension to this model (basically tantamount allowing the synthetic control to have a constant, non-zero difference to the treated unit). I kind of want to smuggle my package in with this package of the Synthetic Control Model, to give it more exposure. Any ideas on how to go about this, or if it is an entirely silly thing to do?
+
+
 # SyntheticControl
 
 ## 1. The fundamental problem of Causal Inference	
