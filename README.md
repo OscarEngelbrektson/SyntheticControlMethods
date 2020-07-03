@@ -1,3 +1,5 @@
+I will edit this to include download instructions and all that good stuff (also I need to type up the equations in latex).
+
 # Questions for Viktor and Oscar:
      1. Do I have too many in-text comments? E.g. in pre-processing function. Should I put these in the functions docstring instead? What's the best practice here?
      2. Do you have any input on smarter solutions to the optimization problem?
