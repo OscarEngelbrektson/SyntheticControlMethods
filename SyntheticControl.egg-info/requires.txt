@@ -1,0 +1,5 @@
+numpy
+scipy
+pandas
+matplotlib>=2.2.3
+jinja2>=2.10

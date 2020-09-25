@@ -1,0 +1,12 @@
+README.md
+setup.py
+SyntheticControl.egg-info/PKG-INFO
+SyntheticControl.egg-info/SOURCES.txt
+SyntheticControl.egg-info/dependency_links.txt
+SyntheticControl.egg-info/requires.txt
+SyntheticControl.egg-info/top_level.txt
+synth/__init__.py
+synth/__version__.py
+synth/inferences.py
+synth/main.py
+synth/plot.py
