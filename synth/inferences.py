@@ -6,7 +6,11 @@ import cvxpy as cvx
 from scipy.optimize import minimize, differential_evolution
 
 class Inferences(object):
-    raise NotImplementedError
+
+    def __init__(self):
+        self.w = None
+        self.v = None
+        self.synth = None
 
     def total_loss(self, v_0, optimize=True):
         '''
@@ -142,7 +146,7 @@ class Inferences(object):
         self.w = best_w
         return best_w, min_loss
 
-        def add_constant(self):
+    def add_constant(self):
         '''Method used only by Synthetic Diff-in-Diff'''
         constant = np.mean(self.treated_outcome - self.control_outcome @ self.w)
         self.control_outcome_all += constant

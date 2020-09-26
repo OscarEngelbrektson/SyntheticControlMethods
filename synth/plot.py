@@ -4,7 +4,6 @@ from __future__ import absolute_import, division, print_function
 import matplotlib.pyplot as plt
 
 class Plot(object):
-    raise NotImplementedError
 
     def plot(self, panels, figsize=(15, 12)):
 

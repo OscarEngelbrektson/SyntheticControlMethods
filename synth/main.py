@@ -109,9 +109,15 @@ class Synth(SynthBase):
         super(Synth, self).__init__(**checked_input)
         #fit model
         #process results
+        '''
+        self.model_args = checked_input['model_args']
+        self.model = checked_input['model']
+        self._fit_model()
+        self._process_posterior_inferences()
+        '''
 
     
-    def _preprocess_input_data(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs):
+    def _process_input_data(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs):
         '''
         Extracts processed variables, excluding v and w, from input variables.
         These are all the data matrices.
@@ -128,20 +134,26 @@ class Synth(SynthBase):
         n_covariates = len(covariates)
 
         ###Get treated unit matrices first###
-        treated_outcome_all, treated_outcome, treated_covariates = _process_treated_data(
+        treated_outcome_all, treated_outcome, treated_covariates = self._process_treated_data(
             dataset, outcome_var, id_var, time_var, 
             treatment_period, treated_unit, periods_all, 
-            periods_pre_treatment, covariates
+            periods_pre_treatment, covariates, n_covariates
         )
         
         ### Now for control unit matrices ###
-        control_outcome_all, control_outcome, control_covariates = _process_control_data(
+        control_outcome_all, control_outcome, control_covariates = self._process_control_data(
             dataset, outcome_var, id_var, time_var, 
             treatment_period, treated_unit, n_controls, 
             periods_all, periods_pre_treatment, covariates
         )
 
         return {
+            'dataset': dataset,
+            'outcome_var':outcome_var,
+            'id_var':id_var,
+            'time_var':time_var,
+            'treatment_period':treatment_period,
+            'treated_unit':treated_unit,
             'covariates':covariates,
             'periods_all':periods_all,
             'periods_pre_treatment':periods_pre_treatment,
@@ -156,7 +168,7 @@ class Synth(SynthBase):
         }
     
     def _process_treated_data(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, 
-                            periods_all, periods_pre_treatment, covariates):
+                            periods_all, periods_pre_treatment, covariates, n_covariates):
         '''
         Extracts..
         '''
