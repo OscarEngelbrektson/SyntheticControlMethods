@@ -38,7 +38,7 @@ class SynthBase(Inferences, Plot): #inferences, plot
 
         
         self.dataset = dataset
-        self.y = outcome_var
+        self.outcome_var = outcome_var
         self.id = id_var
         self.time = time_var
         self.treatment_period = treatment_period
@@ -107,6 +107,8 @@ class Synth(SynthBase):
             dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs
         )
         super(Synth, self).__init__(**checked_input)
+        #self.optimize()
+        self.random_optimize(100)
         #fit model
         #process results
         '''
