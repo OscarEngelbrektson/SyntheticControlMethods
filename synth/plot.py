@@ -69,10 +69,9 @@ class Plot(object):
             ax.axvline(self.treatment_period-1, linestyle=':', color="gray")
             ax.set_ylim(-1.1*most_extreme_value, 1.1*most_extreme_value)
             ax.annotate('Treatment', 
-                xy=(self.treatment_period-1, self.treated_outcome[-1]*1.2),
-                xytext=(-80, -4),
+                xy=(self.treatment_period-1, 0.5*most_extreme_value),
                 xycoords='data',
-                #textcoords="data",
+                xytext=(-80, -4),
                 textcoords='offset points',
                 arrowprops=dict(arrowstyle="->"))
             ax.set_ylabel(self.outcome_var)
@@ -88,17 +87,15 @@ class Plot(object):
             cumulative_effect = np.cumsum(normalized_treated_outcome[self.periods_pre_treatment:])
             cummulative_treated_outcome = np.concatenate((np.zeros(self.periods_pre_treatment), cumulative_effect), axis=None)
             normalized_synth = np.zeros(self.periods_all)
-            most_extreme_value = np.max(np.absolute(normalized_treated_outcome))
 
             ax.plot(time, normalized_synth, 'r--', label=synth_label)
             ax.plot(time ,cummulative_treated_outcome, 'b-', label=treated_label)
             ax.axvline(self.treatment_period-1, linestyle=':', color="gray")
             #ax.set_ylim(-1.1*most_extreme_value, 1.1*most_extreme_value)
             ax.annotate('Treatment', 
-                xy=(self.treatment_period-1, self.treated_outcome[-1]*1.2),
-                xytext=(-80, -4),
+                xy=(self.treatment_period-1, cummulative_treated_outcome[-1]*0.3),
                 xycoords='data',
-                #textcoords="data",
+                xytext=(-80, -4),
                 textcoords='offset points',
                 arrowprops=dict(arrowstyle="->"))
             ax.set_ylabel(self.outcome_var)

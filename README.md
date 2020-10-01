@@ -1,9 +1,22 @@
 I will edit this to include download instructions and all that good stuff (also I need to type up the equations in latex).
 
 # For Oscar:
-. /venv/bin/activate
-source venv/bin/activate
-pip install -e .
+
+### Next steps:
+* Fix optimization (scipy version bug?)
+* In-time placebos
+     * Inference
+     * Plots
+* In-space placebos
+     * Inference
+     * Plots
+* Docstrings and assertions
+* Tests
+
+#### Setting up venv:
+     python3 -m venv venv
+     source venv/bin/activate
+     pip install -e .
 
 # Questions for Reviewers:
      1. Do I have too many in-text comments? E.g. in pre-processing function. Should I put these in the functions docstring instead? What's the best practice here?

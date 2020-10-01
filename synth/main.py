@@ -119,8 +119,8 @@ class Synth(SynthBase):
             dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs
         )
         super(Synth, self).__init__(**checked_input)
-        #self.optimize()
-        self.random_optimize(100)
+        self.optimize()
+        #self.random_optimize(100)
         #fit model
         #process results
         '''
@@ -129,7 +129,6 @@ class Synth(SynthBase):
         self._fit_model()
         self._process_posterior_inferences()
         '''
-
     
     def _process_input_data(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs):
         '''

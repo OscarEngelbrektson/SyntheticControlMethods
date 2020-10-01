@@ -8,4 +8,5 @@ data = data.drop(columns="code", axis=1)
 
 #Fit Synthetic Control
 synth = Synth(data, "gdp", "country", "year", 1990, "West Germany")
+print(synth.w, sum(synth.w))
 synth.plot(["original", "pointwise", "cumulative"])
