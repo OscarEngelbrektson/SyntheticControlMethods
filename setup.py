@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 install_requires = [
         'numpy',
-        'scipy',
+        'scipy==1.4.1',
         'pandas',
         'cvxpy',
         'matplotlib>=2.2.3',
