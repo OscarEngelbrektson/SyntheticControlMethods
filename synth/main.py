@@ -108,8 +108,11 @@ class SynthBase(Inferences, Plot): #inferences, plot
 
         self.w = w #Can be provided if using Synthetic DID
         self.v = None
-        self.fail_count = 0 #Used to limit number of optimization attempts
         self.treatment_effect = treatment_effect #If known
+        self.synth_outcome = None
+        self.synth_covariates = None
+        self.min_loss = float("inf")
+        self.fail_count = 0 #Used to limit number of optimization attempts
 
     
 class Synth(SynthBase):
@@ -119,7 +122,8 @@ class Synth(SynthBase):
             dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs
         )
         super(Synth, self).__init__(**checked_input)
-        self.optimize()
+        self.optimize(self.treated_outcome,self.treated_covariates,
+                        self.control_outcome, self.control_covariates)
         #self.random_optimize(100)
         #fit model
         #process results

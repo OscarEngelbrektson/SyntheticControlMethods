@@ -21,7 +21,7 @@ class Plot(object):
             synth_label="Synthetic Control"):
 
         #Extract Synthetic Control
-        synth = self.w.T @ self.control_outcome_all.T #Transpose to make it (n_periods x 1)
+        synth = self.synth_outcome
         time = self.dataset[self.time].unique()
 
         plt = self._get_plotter()
@@ -40,6 +40,7 @@ class Plot(object):
         idx = 1
 
         if 'original' in panels:
+            ax.set_title("{} vs. {}".format(treated_label, synth_label))
             ax.plot(time, synth.T, 'r--', label=synth_label)
             ax.plot(time ,self.treated_outcome_all, 'b-', label=treated_label)
             ax.axvline(self.treatment_period-1, linestyle=':', color="gray")
@@ -58,12 +59,14 @@ class Plot(object):
             idx += 1
 
         if 'pointwise' in panels:
+
             ax = plt.subplot(n_panels, 1, idx, sharex=ax)
             #Subtract outcome of synth from both synth and treated outcome
             normalized_treated_outcome = self.treated_outcome_all - synth.T
             normalized_synth = np.zeros(self.periods_all)
             most_extreme_value = np.max(np.absolute(normalized_treated_outcome))
 
+            ax.set_title("Pointwise Effects")
             ax.plot(time, normalized_synth, 'r--', label=synth_label)
             ax.plot(time ,normalized_treated_outcome, 'b-', label=treated_label)
             ax.axvline(self.treatment_period-1, linestyle=':', color="gray")
@@ -88,6 +91,7 @@ class Plot(object):
             cummulative_treated_outcome = np.concatenate((np.zeros(self.periods_pre_treatment), cumulative_effect), axis=None)
             normalized_synth = np.zeros(self.periods_all)
 
+            ax.set_title("Cumulative Effects")
             ax.plot(time, normalized_synth, 'r--', label=synth_label)
             ax.plot(time ,cummulative_treated_outcome, 'b-', label=treated_label)
             ax.axvline(self.treatment_period-1, linestyle=':', color="gray")
@@ -105,6 +109,7 @@ class Plot(object):
                 plt.setp(ax.get_xticklabels(), visible=False)
             idx += 1
 
+        fig.tight_layout(pad=3.0)
         plt.show()
 
     def _get_plotter(self):  # pragma: no cover

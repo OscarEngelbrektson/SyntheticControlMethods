@@ -3,7 +3,10 @@ I will edit this to include download instructions and all that good stuff (also 
 # For Oscar:
 
 ### Next steps:
-* Fix optimization (scipy version bug?)
+Fix Args structure of total loss: takes (v0, *args, **kwargs)
+     args[0]
+     approach: treated_outcome = args[0]
+
 * In-time placebos
      * Inference
      * Plots

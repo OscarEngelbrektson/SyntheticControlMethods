@@ -10,3 +10,9 @@ data = data.drop(columns="code", axis=1)
 synth = Synth(data, "gdp", "country", "year", 1990, "West Germany")
 print(synth.w, sum(synth.w))
 synth.plot(["original", "pointwise", "cumulative"])
+
+#Plot validity tests
+
+
+#Compare covariates from treated unit and synthetic control
+print(synth.predictor_table())
