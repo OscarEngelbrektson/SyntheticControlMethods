@@ -1,5 +1,6 @@
 #Import packages
 import pandas as pd
+import numpy as np
 from synth import Synth
 
 #Import data
@@ -9,10 +10,13 @@ data = data.drop(columns="code", axis=1)
 #Fit Synthetic Control
 synth = Synth(data, "gdp", "country", "year", 1990, "West Germany")
 
-'''
+
 #Plot validity tests
 synth.in_space_placebo()
+synth.plot(['in-space placebo'])
+#np.savetxt("placebo_data.csv", synth.in_space_placebos, delimiter=",")
 
+'''
 #Compare covariates from treated unit and synthetic control
 print(synth.predictor_table())
 print(synth.control_outcome)

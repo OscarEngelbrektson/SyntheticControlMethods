@@ -32,8 +32,13 @@ synth = Synth(data, "gdp", "country", "year", 1990, "West Germany")
 The plot contains three panels. The first panel shows the data and a counterfactual prediction for the post-treatment period. The second panel shows the difference between observed data and counterfactual predictions. This is the *pointwise* causal effect, as estimated by the model. The third panel adds up
 the pointwise contributions from the second panel, resulting in a plot of the *cumulative* effect of the intervention.
 
-test: $$\min\sum_{k=1}^k\left(Z_1-w^{\ast}Z_0\right)^2$$
+```python
+#Run then plot validity tests
+synth.in_space_placebo()
+synth.plot(['in-space placebo'])
+```
 
+![Synthetic Control for German Reunification](https://github.com/OscarEngelbrektson/SyntheticControl/blob/master/examples/images/german_reunification_inspace_placebos.png?raw=true)
 
 # More thorough background on the theory that underlies the SyntheticControl
 

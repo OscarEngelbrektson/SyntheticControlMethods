@@ -113,22 +113,32 @@ class Plot(object):
             assert self.in_space_placebos != None, "Must run in_space_placebo() before you can plot!"
             
             ax = plt.subplot(n_panels, 1, idx, sharex=ax)
-            #Compute cumulative treatment effect as cumulative sum of pointwise effects
-            cumulative_effect = np.cumsum(normalized_treated_outcome[self.periods_pre_treatment:])
-            cummulative_treated_outcome = np.concatenate((np.zeros(self.periods_pre_treatment), cumulative_effect), axis=None)
-            normalized_synth = np.zeros(self.periods_all)
+            zero_line = np.zeros(self.periods_all)
+            normalized_treated_outcome = self.treated_outcome_all - synth.T
+            
+            ax.set_title("In-space placebo's")
+            ax.plot(time, zero_line, 'k--')
 
-            ax.set_title("Cumulative Effects")
-            ax.plot(time, normalized_synth, 'r--', label=synth_label)
-            ax.plot(time ,cummulative_treated_outcome, 'b-', label=treated_label)
+            #Plot each placebo
+            for i in range(self.n_controls):
+
+                #Normalize the placebo wrt to the unit it simulates
+                # ((len(unit_list)-1) x treatment_period)
+                normalized_placebo = (self.in_space_placebos[i] - self.control_outcome_all[:, i].T).T
+                ax.plot(time, normalized_placebo, ('0.7'))
+
             ax.axvline(self.treatment_period-1, linestyle=':', color="gray")
+            ax.plot(time, normalized_treated_outcome, 'b-', label=treated_label)
+
             #ax.set_ylim(-1.1*most_extreme_value, 1.1*most_extreme_value)
-            ax.annotate('Treatment', 
+            '''
+            ax.annotate('Treatment',
                 xy=(self.treatment_period-1, cummulative_treated_outcome[-1]*0.3),
                 xycoords='data',
                 xytext=(-80, -4),
                 textcoords='offset points',
                 arrowprops=dict(arrowstyle="->"))
+            '''
             ax.set_ylabel(self.outcome_var)
             ax.set_xlabel(self.time)
             ax.legend()

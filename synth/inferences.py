@@ -142,18 +142,19 @@ class Inferences(object):
                             treated_placebo_covariates,
                             control_placebo_outcome[:self.treatment_period], 
                             control_placebo_covariates,
-                            True)
+                            True, 1)
             
             #Compute outcome of best synthetic control
             #print(self.placebo_w.T)
-            print(self.placebo_w.shape, treated_placebo_outcome.T.shape)
-            synthetic_placebo_outcome = self.placebo_w @ treated_placebo_outcome.T
+            print(self.placebo_w.shape, control_placebo_outcome.T.shape)
+            synthetic_placebo_outcome = self.placebo_w.T @ control_placebo_outcome.T
             #Store it
             placebo_outcomes.append(synthetic_placebo_outcome)
             print(placebo_outcomes)
 
         #Store numpy array
         self.in_space_placebos = placebo_outcomes
+        #self.normalized
         return
 
     def in_time_placebo(self, treatment_period):
