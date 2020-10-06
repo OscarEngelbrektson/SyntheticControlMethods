@@ -19,8 +19,8 @@ data = data.drop(columns="code", axis=1)
 #Fit Synthetic Control
 synth = Synth(data, "gdp", "country", "year", 1990, "West Germany")
 ```
-![Synthetic Control for German Reunification]
-(https://github.com/OscarEngelbrektson/SyntheticControl/blob/master/examples/images/german_reunification_synth.png)
+
+![Synthetic Control for German Reunification](https://github.com/OscarEngelbrektson/SyntheticControl/blob/master/examples/images/german_reunification_synth.png?raw=true)
 
 The plot contains three panels. The first panel shows the data and a counterfactual prediction for the post-treatment period. The second panel shows the difference between observed data and counterfactual predictions. This is the *pointwise* causal effect, as estimated by the model. The third panel adds up
 the pointwise contributions from the second panel, resulting in a plot of the *cumulative* effect of the intervention.
