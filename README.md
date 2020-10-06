@@ -57,11 +57,11 @@ In practice, however, this approach is flawed because it assigns equal weight to
 
 The procedure for finding the optimal synthetic control is expressed as follows: 
 
-     W*(V) =          (1)
+![Equation 1](https://github.com/OscarEngelbrektson/SyntheticControl/blob/master/examples/images/equation1.png?raw=true)
 
 That is, W*(V) is the vector of weights W that minimizes the difference between the pre-treatment characteristics of the treated unit and the synthetic control, given V. That is, W* depends on the choice of V–hence the notation W*(V). We choose V* to be the V that results in W*(V) that minimizes the following expression:
 
-       V*  =	       (2)
+![Equation 2](https://github.com/OscarEngelbrektson/SyntheticControl/blob/master/examples/images/equation2.png?raw=true)
 
 
 That is the minimum difference between the outcome of the treated unit and the synthetic control in the pre-treatment period.
