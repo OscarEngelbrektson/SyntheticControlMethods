@@ -8,11 +8,13 @@ data = data.drop(columns="code", axis=1)
 
 #Fit Synthetic Control
 synth = Synth(data, "gdp", "country", "year", 1990, "West Germany")
-print(synth.w, sum(synth.w))
-synth.plot(["original", "pointwise", "cumulative"])
 
+'''
 #Plot validity tests
-
+synth.in_space_placebo()
 
 #Compare covariates from treated unit and synthetic control
 print(synth.predictor_table())
+print(synth.control_outcome)
+print(synth.control_covariates)
+'''

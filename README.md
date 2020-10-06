@@ -1,37 +1,34 @@
-I will edit this to include download instructions and all that good stuff (also I need to type up the equations in latex).
+# Work in progress
 
-# For Oscar:
+# Installation
 
-### Next steps:
-Fix Args structure of total loss: takes (v0, *args, **kwargs)
-     args[0]
-     approach: treated_outcome = args[0]
+     pip install SyntheticControl
 
-* In-time placebos
-     * Inference
-     * Plots
-* In-space placebos
-     * Inference
-     * Plots
-* Docstrings and assertions
-* Tests
+# Simple example
+In this simple example, we replicate [Abadie, Diamond and Hainmueller (2015)](http://github.com) which estimates the economic impact of the 1990 German reunification on West Germany using the synthetic control method.
 
-#### Setting up venv:
-     python3 -m venv venv
-     source venv/bin/activate
-     pip install -e .
+```python
+#Import packages
+import pandas as pd
+from synth import Synth
 
-# Questions for Reviewers:
-     1. Do I have too many in-text comments? E.g. in pre-processing function. Should I put these in the functions docstring instead? What's the best practice here?
-     2. Do you have any input on smarter solutions to the optimization problem?
-     3. I need to add ~4 more plotting functions for different kinds of plots. How should I go about making that in a nice way?
-     4. Currently, this is implementing a well-established method called the Synthetic Control Method. I, as part of my thesis, plan on implementing an extension to this model (basically tantamount allowing the synthetic control to have a constant, non-zero difference to the treated unit). I kind of want to smuggle my package in with this package of the Synthetic Control Model, to give it more exposure. Any ideas on how to go about this, or if it is an entirely silly thing to do?
+#Import data
+data = pd.read_csv("examples/german_reunification.csv")
+data = data.drop(columns="code", axis=1)
 
+#Fit Synthetic Control
+synth = Synth(data, "gdp", "country", "year", 1990, "West Germany")
+```
+![Synthetic Control for German Reunification]
+(https://github.com/OscarEngelbrektson/SyntheticControl/tree/master/examples/german_reunification_synth.png)
 
-# SyntheticControl
+The plot contains three panels. The first panel shows the data and a counterfactual prediction for the post-treatment period. The second panel shows the difference between observed data and counterfactual predictions. This is the *pointwise* causal effect, as estimated by the model. The third panel adds up
+the pointwise contributions from the second panel, resulting in a plot of the *cumulative* effect of the intervention.
+
+# More thorough background on the theory that underlies the SyntheticControl
 
 ## 1. The fundamental problem of Causal Inference	
-
+(will be typed out in latex)
 In this context, we define the impact or, equivalently, causal effect of some treatment on some outcome for some unit(s), as the difference in potential outcomes. For example, the effect of taking an aspirin on my headache is defined to be the difference in how much my head aches if I take the pill as compared to how much my head would have ached had I not taken it. Of course, it is not possible for me to both take and not take the aspirin. I have to choose one alternative, and will only observe the outcome associated with that alternative. This logic applies to any treatment on any unit: only one of two potential outcomes can ever be observed. This is often referred to as the fundamental problem of causal inference (Rubin, 1974). The objective of models in this package is to estimate this unobserved quantity–what the outcome of the treated unit would have been if it had not received the treatment.
 
 ## 2. The data format
@@ -60,3 +57,28 @@ That is, W*(V) is the vector of weights W that minimizes the difference between 
 That is the minimum difference between the outcome of the treated unit and the synthetic control in the pre-treatment period.
 
 In code, I solve for W*(V) using a convex optimizer from the cvxpy package, as the optimization problem is convex. I define the loss function total_loss(V) to be the value of Eq.2 with W*(V) derived using the convex optimizer. However, finding V that minimizes total_loss(V) is not a convex problem. Consequently, I use a solver, minimize(method=’L-BFGS-B’) from the scipy.optimize module, that does not require convexity but in return cannot guarantee that the global minimum of the function is found. To decrease the probability that the solution provided is only a local minimum, I initialize the function for several different starting values of V. I randomly generate valid (k x k) V matrices as Diag(K) with K ~ Dirichlet({1_1,...,1_k}).
+
+### Next steps:
+* README
+* Example
+* Pre-post RMSPE-ratio of synthetic control (Relative to corresponding treated unit)
+** In-space placebos
+     * Inference
+     * Plots
+* Leave one out placebo
+* In-time placebos
+     * Inference
+     * Plots
+* Docstrings and assertions
+* Tests
+
+#### Setting up venv:
+     python3 -m venv venv
+     source venv/bin/activate
+     pip install -e .
+
+# Questions for Reviewers:
+     1. Do I have too many in-text comments? E.g. in pre-processing function. Should I put these in the functions docstring instead? What's the best practice here?
+     2. Do you have any input on smarter solutions to the optimization problem?
+     3. I need to add ~4 more plotting functions for different kinds of plots. How should I go about making that in a nice way?
+     4. Currently, this is implementing a well-established method called the Synthetic Control Method. I, as part of my thesis, plan on implementing an extension to this model (basically tantamount allowing the synthetic control to have a constant, non-zero difference to the treated unit). I kind of want to smuggle my package in with this package of the Synthetic Control Model, to give it more exposure. Any ideas on how to go about this, or if it is an entirely silly thing to do?

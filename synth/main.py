@@ -47,8 +47,6 @@ class SynthBase(Inferences, Plot): #inferences, plot
         treatment_effect:
         '''
 
-
-        
         self.dataset = dataset
         self.outcome_var = outcome_var
         self.id = id_var
@@ -59,7 +57,8 @@ class SynthBase(Inferences, Plot): #inferences, plot
         self.periods_all = periods_all
         self.periods_pre_treatment = periods_pre_treatment
         self.n_controls = n_controls
-        self.n_covariates = n_covariates        
+        self.n_covariates = n_covariates 
+               
         
         '''
         PROCESSED VARIABLES:
@@ -98,7 +97,7 @@ class SynthBase(Inferences, Plot): #inferences, plot
         number of solutions V*c, where c is a scalar, that assign equal relative importance to each covariate
         Referred to as V in Abadie, Diamond, Hainmueller.
         '''
-
+        ###Post processing quantities
         self.treated_outcome = treated_outcome
         self.control_outcome = control_outcome
         self.treated_covariates = treated_covariates
@@ -106,6 +105,7 @@ class SynthBase(Inferences, Plot): #inferences, plot
         self.treated_outcome_all = treated_outcome_all
         self.control_outcome_all = control_outcome_all
 
+        ###Post inference quantities
         self.w = w #Can be provided if using Synthetic DID
         self.v = None
         self.treatment_effect = treatment_effect #If known
@@ -114,25 +114,31 @@ class SynthBase(Inferences, Plot): #inferences, plot
         self.min_loss = float("inf")
         self.fail_count = 0 #Used to limit number of optimization attempts
 
+        ###Validity tests
+        self.in_space_placebos = None
+        self.in_time_placebo = None
+        self.placebo_w = None
+
     
 class Synth(SynthBase):
 
     def __init__(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs):
+
         checked_input = self._process_input_data(
             dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs
         )
         super(Synth, self).__init__(**checked_input)
-        self.optimize(self.treated_outcome,self.treated_covariates,
-                        self.control_outcome, self.control_covariates)
-        #self.random_optimize(100)
-        #fit model
-        #process results
-        '''
-        self.model_args = checked_input['model_args']
-        self.model = checked_input['model']
-        self._fit_model()
-        self._process_posterior_inferences()
-        '''
+
+        #Get synthetic Control
+        self.optimize(self.treated_outcome, self.treated_covariates,
+                        self.control_outcome, self.control_covariates,
+                        False)
+        
+        #Visualize synthetic control
+        self.plot(["original", "pointwise", "cumulative"], 
+                    (15, 12), self.treated_unit)
+        #Perform validity tests
+
     
     def _process_input_data(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs):
         '''

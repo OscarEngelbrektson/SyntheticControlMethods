@@ -17,7 +17,7 @@ import numpy as np
 class Plot(object):
 
     def plot(self, panels, figsize=(15, 12), 
-            treated_label="Treated unit",
+            treated_label="Treated Unit",
             synth_label="Synthetic Control"):
 
         #Extract Synthetic Control
@@ -26,7 +26,7 @@ class Plot(object):
 
         plt = self._get_plotter()
         fig = plt.figure(figsize=figsize)
-        valid_panels = ['original', 'pointwise', 'cumulative']
+        valid_panels = ['original', 'pointwise', 'cumulative', 'in-space placebo']
         for panel in panels:
             if panel not in valid_panels:
                 raise ValueError(
@@ -85,6 +85,33 @@ class Plot(object):
             idx += 1
 
         if 'cumulative' in panels:
+            ax = plt.subplot(n_panels, 1, idx, sharex=ax)
+            #Compute cumulative treatment effect as cumulative sum of pointwise effects
+            cumulative_effect = np.cumsum(normalized_treated_outcome[self.periods_pre_treatment:])
+            cummulative_treated_outcome = np.concatenate((np.zeros(self.periods_pre_treatment), cumulative_effect), axis=None)
+            normalized_synth = np.zeros(self.periods_all)
+
+            ax.set_title("Cumulative Effects")
+            ax.plot(time, normalized_synth, 'r--', label=synth_label)
+            ax.plot(time ,cummulative_treated_outcome, 'b-', label=treated_label)
+            ax.axvline(self.treatment_period-1, linestyle=':', color="gray")
+            #ax.set_ylim(-1.1*most_extreme_value, 1.1*most_extreme_value)
+            ax.annotate('Treatment', 
+                xy=(self.treatment_period-1, cummulative_treated_outcome[-1]*0.3),
+                xycoords='data',
+                xytext=(-80, -4),
+                textcoords='offset points',
+                arrowprops=dict(arrowstyle="->"))
+            ax.set_ylabel(self.outcome_var)
+            ax.set_xlabel(self.time)
+            ax.legend()
+            if idx != n_panels:
+                plt.setp(ax.get_xticklabels(), visible=False)
+            idx += 1
+
+        if 'in-space placebo' in panels:
+            assert self.in_space_placebos != None, "Must run in_space_placebo() before you can plot!"
+            
             ax = plt.subplot(n_panels, 1, idx, sharex=ax)
             #Compute cumulative treatment effect as cumulative sum of pointwise effects
             cumulative_effect = np.cumsum(normalized_treated_outcome[self.periods_pre_treatment:])

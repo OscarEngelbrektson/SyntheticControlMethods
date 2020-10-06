@@ -21,11 +21,14 @@ class Inferences(object):
 
     def total_loss(self, v_0, 
                     treated_outcome, treated_covariates,
-                    control_outcome, control_covariates):
+                    control_outcome, control_covariates, 
+                    placebo):
         '''
         Solves for w*(v) that minimizes loss function 1 given v,
         Returns loss from loss function 2 with w=w*(v)
         '''
+        assert type(placebo)==bool, "TypeError: Placebo must be True or False"
+
         n_controls = control_outcome.shape[1]
         
         V = np.zeros(shape=(self.n_covariates, self.n_covariates))
@@ -49,29 +52,33 @@ class Inferences(object):
         except:
             return float(np.inf)
        
-       #If loss is smaller than previous minimum, update loss, w and v
-        if loss < self.min_loss:
-            self.min_loss = loss
-            self.w = w.value
-            self.v = v_0
-            self.synth_outcome = self.w.T @ self.control_outcome_all.T #Transpose to make it (n_periods x 1)
-            self.synth_covariates = self.control_covariates @ self.w
-
+        #If loss is smaller than previous minimum, update loss, w and v
+        if not placebo:
+            if loss < self.min_loss:
+                self.min_loss = loss
+                self.w = w.value
+                self.v = v_0
+                self.synth_outcome = self.w.T @ self.control_outcome_all.T #Transpose to make it (n_periods x 1)
+                self.synth_covariates = self.control_covariates @ self.w
+        
+        else:
+            self.placebo_w = w.value
+            
         #Return loss
         return loss
 
     
-    
     def optimize(self,
                 treated_outcome, treated_covariates,
                 control_outcome, control_covariates,
-                steps=5, verbose=False):
+                placebo,
+                steps=8, verbose=False):
         '''
         
         '''
-
-        #Initalize variable to track best w*(v)
-        best_w, min_loss = None, float(np.inf)
+        args = (treated_outcome, treated_covariates,
+                control_outcome, control_covariates,
+                placebo)
         
         for step in range(steps):
 
@@ -82,9 +89,6 @@ class Inferences(object):
             bnds = tuple((0,1) for _ in range(self.n_covariates))
             
             #Optimze
-            args = (treated_outcome, treated_covariates,
-                    control_outcome, control_covariates)
-
             res = minimize(self.total_loss, v_0,  args=(args),
                             method='L-BFGS-B', bounds=bnds, 
                             options={'gtol': 1e-6,'disp':3, 'iprint':3})
@@ -95,67 +99,73 @@ class Inferences(object):
         
         #If sampler did not converge, try again up to 3 times before admitting defeat
         try:
-            best_w[0]
+            res.x
         except:
             self.fail_count += 1
-            if self.fail_count <= 3:
-                self.optimize(treated_outcome, treated_covariates,
-                            control_outcome, control_covariates)
+            if self.fail_count <= 1:
+                self.optimize(*args)
 
-        #Return total loss
-        return min_loss
-    
-    def diffevo_optimize(self):
-        '''Uses the differential evolution optimizer from scipy to solve for synthetic control'''
-        bounds = [(0,1) for _ in range(self.n_covariates)]
+        return
 
-        result = differential_evolution(self.total_loss, bounds)
-        
-        self.v = result.x
-        
-        self.w, loss = self.total_loss(self.v, False)
-        
-        return self.w, loss
-
-
-    def random_optimize(self, steps=10**4):
+    def in_space_placebo(self):
         '''
-        "When intelligent approaches fail, throw spaghetti at the wall and see what sticks" - Benito Mussolini
-        
-        The below random samples valid v matrices from a dirichlet distribution,
-        then computes the resulting w*(v) and the total loss associated with it
-        
-        Returns the w*(v) that minimizes total loss, and the total loss
-        '''
-        #Initalize variable to track best w*(v)
-        best_w, min_loss = None, float(np.inf)
-        for i in range(steps):
-            
-            #Generate sample v
-            #Dirichlet distribution returns a valid pmf over n_covariates states
-            v = np.random.dirichlet(np.ones(self.n_covariates), size=1)
-            
-            #Print progress
-            if (i+1)%steps/10 == 0:
-                print('{}%'.format((i+1)%steps/10))
-            
-            #Compute w*(v) and loss for v
-            w, loss = self.total_loss(v, False)
-            
-            #See if w*(v) results in lower loss, if so update best
-            if loss < min_loss:
-                best_w, min_loss = w, loss
-        
-        
-        #Store, print, return best solutions
-        self.w = best_w
-        return best_w, min_loss
+        Fits a synthetic control to each of the control units, 
+        using the remaining control units as control group
 
-    def add_constant(self):
-        '''Method used only by Synthetic Diff-in-Diff'''
-        constant = np.mean(self.treated_outcome - self.control_outcome @ self.w)
-        self.control_outcome_all += constant
-    
+        Returns:
+            matrix (n_controls x n_periods) with the outcome for each synthetic control
+
+        procedure:
+        1. find way to remove one control unit from control_covariate and control_outcome
+        2. For loop over all control units, fitting a control to each
+        3. Store the outcome values for each synthetic control
+        '''
+        placebo_outcomes = []
+        for i in range(self.n_controls):
+            #Format placebo and control data
+            # treated_outcome: a (1 x treatment_period)
+            treated_placebo_outcome = self.control_outcome_all[:,i].reshape(self.periods_all, 1)
+            #treated_covariates: a (1 x len(covariates))
+            treated_placebo_covariates = self.control_covariates[:,i].reshape(self.n_covariates, 1)
+            print("treated")
+            print(treated_placebo_outcome.shape, self.treated_outcome_all.shape)
+            print(treated_placebo_covariates.shape,  self.treated_covariates.shape)
+            # ((len(unit_list)-1) x treatment_period)
+            control_placebo_outcome = np.array([self.control_outcome_all[:,j] for j in range(self.n_controls) if j != i]).T
+            #(n_controls x len(covariates))
+            control_placebo_covariates = np.array([[self.control_covariates[j,x] for x in range(self.n_controls) if x != i] for j in range(self.n_covariates)])
+            print("controls")
+            print(control_placebo_outcome.shape, self.control_outcome_all.shape)
+            print(control_placebo_covariates.shape, self.control_covariates.shape)
+            #Solve for best synthetic control weights
+            self.optimize(treated_placebo_outcome[:self.treatment_period], 
+                            treated_placebo_covariates,
+                            control_placebo_outcome[:self.treatment_period], 
+                            control_placebo_covariates,
+                            True)
+            
+            #Compute outcome of best synthetic control
+            #print(self.placebo_w.T)
+            print(self.placebo_w.shape, treated_placebo_outcome.T.shape)
+            synthetic_placebo_outcome = self.placebo_w @ treated_placebo_outcome.T
+            #Store it
+            placebo_outcomes.append(synthetic_placebo_outcome)
+            print(placebo_outcomes)
+
+        #Store numpy array
+        self.in_space_placebos = placebo_outcomes
+        return
+
+    def in_time_placebo(self, treatment_period):
+        '''
+        Fits a synthetic control to the treated unit,
+        at a treat
+
+        Returns:
+            matrix (n_controls x n_periods) with the outcome for each synthetic control
+        '''
+        return NotImplementedError
+
     def get_post_treatment_rmspe(self):
         '''
         Computes post-treatment outcome for treated and synthetic control unit
@@ -208,3 +218,54 @@ class Inferences(object):
                                  donor_pool_label: self.control_covariates.mean(axis=1)},
                                 index=self.covariates)
         return table
+    
+    def diffevo_optimize(self):
+        '''Uses the differential evolution optimizer from scipy to solve for synthetic control'''
+        bounds = [(0,1) for _ in range(self.n_covariates)]
+
+        result = differential_evolution(self.total_loss, bounds)
+        
+        self.v = result.x
+        
+        self.w, loss = self.total_loss(self.v, False)
+        
+        return self.w, loss
+
+
+    def random_optimize(self, steps=10**4):
+        '''
+        "When intelligent approaches fail, throw spaghetti at the wall and see what sticks" - Benito Mussolini
+        
+        The below random samples valid v matrices from a dirichlet distribution,
+        then computes the resulting w*(v) and the total loss associated with it
+        
+        Returns the w*(v) that minimizes total loss, and the total loss
+        '''
+        #Initalize variable to track best w*(v)
+        best_w, min_loss = None, float(np.inf)
+        for i in range(steps):
+            
+            #Generate sample v
+            #Dirichlet distribution returns a valid pmf over n_covariates states
+            v = np.random.dirichlet(np.ones(self.n_covariates), size=1)
+            
+            #Print progress
+            if (i+1)%steps/10 == 0:
+                print('{}%'.format((i+1)%steps/10))
+            
+            #Compute w*(v) and loss for v
+            w, loss = self.total_loss(v, False)
+            
+            #See if w*(v) results in lower loss, if so update best
+            if loss < min_loss:
+                best_w, min_loss = w, loss
+        
+        
+        #Store, print, return best solutions
+        self.w = best_w
+        return best_w, min_loss
+
+    def add_constant(self):
+        '''Method used only by Synthetic Diff-in-Diff'''
+        constant = np.mean(self.treated_outcome - self.control_outcome @ self.w)
+        self.control_outcome_all += constant
