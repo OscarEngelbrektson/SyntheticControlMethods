@@ -1,10 +1,17 @@
-# Work in progress
+# Synthetic Control
 
-# Installation
+
+
+## A Python package for causal inference using synthetic controls
+This Python package implements an approach to estimating the causal effect of an intervention on a time series. For example, how was West Germany's economy affected by the German Reunification in 1990? Answering a question like this can be difficult when a randomized experiment is not available. This package aims to address this difficulty by providing a systematic way to choose comparison units to estimate how the outcome of interest would have evolved after the intervention if the intervention had not occurred.
+
+As with all approaches to causal inference on non-experimental data, valid conclusions require strong assumptions. This method assumes that the outcome of the treated unit can be explained in terms of a set of control units that were themselves not affected by the intervention. Furthermore, the relationship between the treated and control units is assumed to remain stable during the post-intervention period. Including only control units in your dataset that meet these assumptions is critical to the reliability of causal estimates.
+
+## Installation
 
      pip install SyntheticControl
 
-# Simple example
+## Example
 In this simple example, we replicate [Abadie, Diamond and Hainmueller (2015)](http://github.com) which estimates the economic impact of the 1990 German reunification on West Germany using the synthetic control method.
 
 ```python
@@ -24,6 +31,9 @@ synth = Synth(data, "gdp", "country", "year", 1990, "West Germany")
 
 The plot contains three panels. The first panel shows the data and a counterfactual prediction for the post-treatment period. The second panel shows the difference between observed data and counterfactual predictions. This is the *pointwise* causal effect, as estimated by the model. The third panel adds up
 the pointwise contributions from the second panel, resulting in a plot of the *cumulative* effect of the intervention.
+
+test: $$\min\sum_{k=1}^k\left(Z_1-w^{\ast}Z_0\right)^2$$
+
 
 # More thorough background on the theory that underlies the SyntheticControl
 
