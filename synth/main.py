@@ -134,12 +134,11 @@ class Synth(SynthBase):
         self.optimize(self.treated_outcome, self.treated_covariates,
                         self.control_outcome, self.control_covariates,
                         False)
-        '''
+        
         #Visualize synthetic control
         self.plot(["original", "pointwise", "cumulative"], 
                     (15, 12), self.treated_unit)
-        #Perform validity tests
-        '''
+        
     
     def _process_input_data(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs):
         '''
