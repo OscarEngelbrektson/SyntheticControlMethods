@@ -123,20 +123,14 @@ class Inferences(object):
         placebo_outcomes = []
         for i in range(self.n_controls):
             #Format placebo and control data
-            # treated_outcome: a (1 x treatment_period)
             treated_placebo_outcome = self.control_outcome_all[:,i].reshape(self.periods_all, 1)
-            #treated_covariates: a (1 x len(covariates))
+
             treated_placebo_covariates = self.control_covariates[:,i].reshape(self.n_covariates, 1)
-            print("treated")
-            print(treated_placebo_outcome.shape, self.treated_outcome_all.shape)
-            print(treated_placebo_covariates.shape,  self.treated_covariates.shape)
-            # ((len(unit_list)-1) x treatment_period)
+
             control_placebo_outcome = np.array([self.control_outcome_all[:,j] for j in range(self.n_controls) if j != i]).T
-            #(n_controls x len(covariates))
+
             control_placebo_covariates = np.array([[self.control_covariates[j,x] for x in range(self.n_controls) if x != i] for j in range(self.n_covariates)])
-            print("controls")
-            print(control_placebo_outcome.shape, self.control_outcome_all.shape)
-            print(control_placebo_covariates.shape, self.control_covariates.shape)
+
             #Solve for best synthetic control weights
             self.optimize(treated_placebo_outcome[:self.treatment_period], 
                             treated_placebo_covariates,
@@ -145,17 +139,66 @@ class Inferences(object):
                             True, 1)
             
             #Compute outcome of best synthetic control
-            #print(self.placebo_w.T)
-            print(self.placebo_w.shape, control_placebo_outcome.T.shape)
             synthetic_placebo_outcome = self.placebo_w.T @ control_placebo_outcome.T
+
             #Store it
             placebo_outcomes.append(synthetic_placebo_outcome)
-            print(placebo_outcomes)
 
-        #Store numpy array
-        self.in_space_placebos = placebo_outcomes
-        #self.normalized
+        #Compute pre-post RMSPE Ratio
+        self.pre_post_rmspe_ratio = self._pre_post_rmspe_ratios(placebo_outcomes)
+        self.in_space_placebos = self._normalize_placebos(placebo_outcomes)
         return
+
+    def _normalize_placebos(self, placebos):
+        '''
+        Takes array of synthetic placebo outcomes
+
+        returns array of same dimension where the control unit outcome has been subtracted from
+        the synthetic placebo
+        '''
+        #Initialize ratio list with treated unit
+        normalized_placebo_outcomes = []
+
+        #Add each control unit and respective synthetic control
+        for i in range(self.n_controls):
+            normalized_outcome = (placebos[i] - self.control_outcome_all[:, i].T).T
+            normalized_placebo_outcomes.append(normalized_outcome)
+
+        return normalized_placebo_outcomes
+
+    def _pre_post_rmspe_ratios(self, placebo_outcomes):
+        '''
+        Computes the pre-post root mean square prediction error for all
+        in-place placebos and the treated units
+        '''
+        #Initialize ratio list with treated unit
+        ratio_list = [self._pre_post_rmspe(self.synth_outcome, self.treated_outcome_all)]
+
+        #Add each control unit and respective synthetic control
+        for i in range(self.n_controls):
+            ratio = self._pre_post_rmspe(placebo_outcomes[i], self.control_outcome_all[:, i])
+            ratio_list.append(ratio)
+
+        return ratio_list
+
+    def _pre_post_rmspe(self, synth_outcome, treated_outcome):
+        '''
+        Input: Takes two outcome time series of the same dimensions
+
+        Returns:
+        post-treatment root mean square prediction error
+        divided by
+        pre-treatment root mean square prediction error
+        '''
+
+        t = self.periods_pre_treatment
+
+        pre_treatment = np.sqrt(((treated_outcome[:t] - synth_outcome.T[:t]) ** 2).mean())
+ 
+        post_treatment = np.sqrt(((treated_outcome[t:] - synth_outcome.T[t:]) ** 2).mean())
+
+        return post_treatment / pre_treatment 
+
 
     def in_time_placebo(self, treatment_period):
         '''
@@ -187,7 +230,6 @@ class Inferences(object):
         Computes pre-treatment outcome for treated and synthetic control unit
         
         Returns pre-treatment RMSPE for synthetic control.
-        Required: self.w must be defined.
         '''
         
         return np.sqrt(((self.treated_outcome - self.control_outcome @ self.w) ** 2).mean())

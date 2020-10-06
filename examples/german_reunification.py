@@ -13,7 +13,7 @@ synth = Synth(data, "gdp", "country", "year", 1990, "West Germany")
 
 #Plot validity tests
 synth.in_space_placebo()
-synth.plot(['in-space placebo'])
+synth.plot(['in-space placebo', 'pre/post rmspe'])
 #np.savetxt("placebo_data.csv", synth.in_space_placebos, delimiter=",")
 
 '''

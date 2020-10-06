@@ -18,7 +18,7 @@ import numpy as np
 from synth.plot import Plot
 from synth.inferences import Inferences
 
-class SynthBase(Inferences, Plot): #inferences, plot
+class SynthBase(Inferences, Plot):
     
     def __init__(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, 
                 covariates, periods_all, periods_pre_treatment, n_controls, n_covariates,
@@ -118,6 +118,7 @@ class SynthBase(Inferences, Plot): #inferences, plot
         self.in_space_placebos = None
         self.in_time_placebo = None
         self.placebo_w = None
+        self.pre_post_rmspe_ratio = None
 
     
 class Synth(SynthBase):

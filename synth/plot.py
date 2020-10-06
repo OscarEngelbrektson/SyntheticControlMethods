@@ -26,7 +26,7 @@ class Plot(object):
 
         plt = self._get_plotter()
         fig = plt.figure(figsize=figsize)
-        valid_panels = ['original', 'pointwise', 'cumulative', 'in-space placebo']
+        valid_panels = ['original', 'pointwise', 'cumulative', 'in-space placebo', 'pre/post rmspe']
         for panel in panels:
             if panel not in valid_panels:
                 raise ValueError(
@@ -120,12 +120,9 @@ class Plot(object):
             ax.plot(time, zero_line, 'k--')
 
             #Plot each placebo
-            for i in range(self.n_controls):
-
-                #Normalize the placebo wrt to the unit it simulates
-                # ((len(unit_list)-1) x treatment_period)
-                normalized_placebo = (self.in_space_placebos[i] - self.control_outcome_all[:, i].T).T
-                ax.plot(time, normalized_placebo, ('0.7'))
+            ax.plot(time, self.in_space_placebos[0], ('0.7'), label="Placebos")
+            for i in range(1, self.n_controls):
+                ax.plot(time, self.in_space_placebos[i], ('0.7'))
 
             ax.axvline(self.treatment_period-1, linestyle=':', color="gray")
             ax.plot(time, normalized_treated_outcome, 'b-', label=treated_label)
@@ -142,6 +139,28 @@ class Plot(object):
             ax.set_ylabel(self.outcome_var)
             ax.set_xlabel(self.time)
             ax.legend()
+            if idx != n_panels:
+                plt.setp(ax.get_xticklabels(), visible=False)
+            idx += 1
+
+        if 'pre/post rmspe' in panels:
+            assert self.pre_post_rmspe_ratio != None, "Must run in_space_placebo() before you can plot!"
+            
+            ax = plt.subplot(n_panels, 1, idx)
+            
+            ax.set_title("Pre/post treatment root mean square prediction error")
+
+            ax.hist(self.pre_post_rmspe_ratio, bins=int(max(self.pre_post_rmspe_ratio)))
+            
+            ax.annotate(self.treated_unit,
+                xy=(self.pre_post_rmspe_ratio[0], 2),
+                xycoords='data',
+                xytext=(-100, 80),
+                textcoords='offset points',
+                arrowprops=dict(arrowstyle="->"))
+            
+            ax.set_ylabel("Frequency")
+            ax.set_xlabel("Ratio")
             if idx != n_panels:
                 plt.setp(ax.get_xticklabels(), visible=False)
             idx += 1
