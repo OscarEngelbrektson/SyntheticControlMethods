@@ -73,27 +73,6 @@ That is the minimum difference between the outcome of the treated unit and the s
 
 In code, I solve for W*(V) using a convex optimizer from the cvxpy package, as the optimization problem is convex. I define the loss function total_loss(V) to be the value of Eq.2 with W*(V) derived using the convex optimizer. However, finding V that minimizes total_loss(V) is not a convex problem. Consequently, I use a solver, minimize(method=’L-BFGS-B’) from the scipy.optimize module, that does not require convexity but in return cannot guarantee that the global minimum of the function is found. To decrease the probability that the solution provided is only a local minimum, I initialize the function for several different starting values of V. I randomly generate valid (k x k) V matrices as Diag(K) with K ~ Dirichlet({1_1,...,1_k}).
 
-### Next steps:
-* README
-* Example
-* Pre-post RMSPE-ratio of synthetic control (Relative to corresponding treated unit)
-** In-space placebos
-     * Inference
-     * Plots
-* Leave one out placebo
-* In-time placebos
-     * Inference
-     * Plots
-* Docstrings and assertions
-* Tests
-
-#### Setting up venv:
-     python3 -m venv venv
-     source venv/bin/activate
-     pip install -e .
-
 # Questions for Reviewers:
      1. Do I have too many in-text comments? E.g. in pre-processing function. Should I put these in the functions docstring instead? What's the best practice here?
      2. Do you have any input on smarter solutions to the optimization problem?
-     3. I need to add ~4 more plotting functions for different kinds of plots. How should I go about making that in a nice way?
-     4. Currently, this is implementing a well-established method called the Synthetic Control Method. I, as part of my thesis, plan on implementing an extension to this model (basically tantamount allowing the synthetic control to have a constant, non-zero difference to the treated unit). I kind of want to smuggle my package in with this package of the Synthetic Control Model, to give it more exposure. Any ideas on how to go about this, or if it is an entirely silly thing to do?
