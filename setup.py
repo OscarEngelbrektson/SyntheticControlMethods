@@ -32,7 +32,7 @@ setup(
     name='SyntheticControlMethods',
     version=_version['__version__'],
     author='Oscar Engelbrektson',
-    author_email='engelbrektson.oscar@gmail.com',
+    author_email='oscar.engelbrektson@gmail.com',
     url='https://github.com/OscarEngelbrektson/SyntheticControl',
     description= "A Python package for causal inference using various Synthetic Control Methods",
     long_description=readme,
@@ -52,9 +52,6 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python',
-        'Topic :: Scientific',
-        'Topic :: Econometrics',
-        'Topic :: Causal Inference',
-        'Topic :: Impact Evaluation',
+        'Topic :: Scientific/Engineering :: Artificial Intelligence'
     ],
 )
