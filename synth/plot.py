@@ -22,6 +22,7 @@ class Plot(object):
     def plot(self, panels, figsize=(15, 12), 
             treated_label="Treated Unit",
             synth_label="Synthetic Control",
+            treatment_label="Treatment",
             in_space_exclusion_multiple=5):
         '''
         Supported plots:
@@ -85,7 +86,8 @@ class Plot(object):
 
         plt = self._get_plotter()
         fig = plt.figure(figsize=figsize)
-        valid_panels = ['original', 'pointwise', 'cumulative', 'in-space placebo', 'pre/post rmspe']
+        valid_panels = ['original', 'pointwise', 'cumulative', 
+                        'in-space placebo', 'pre/post rmspe', 'in-time placebo']
         for panel in panels:
             if panel not in valid_panels:
                 raise ValueError(
@@ -103,9 +105,9 @@ class Plot(object):
             ax.plot(time, synth.T, 'r--', label=synth_label)
             ax.plot(time ,self.treated_outcome_all, 'b-', label=treated_label)
             ax.axvline(self.treatment_period-1, linestyle=':', color="gray")
-            ax.annotate('Treatment', 
+            ax.annotate(treatment_label, 
                 xy=(self.treatment_period-1, self.treated_outcome[-1]*1.2),
-                xytext=(-80, -4),
+                xytext=(-160, -4),
                 xycoords='data',
                 #textcoords="data",
                 textcoords='offset points',
@@ -130,10 +132,10 @@ class Plot(object):
             ax.plot(time ,normalized_treated_outcome, 'b-', label=treated_label)
             ax.axvline(self.treatment_period-1, linestyle=':', color="gray")
             ax.set_ylim(-1.1*most_extreme_value, 1.1*most_extreme_value)
-            ax.annotate('Treatment', 
+            ax.annotate(treatment_label, 
                 xy=(self.treatment_period-1, 0.5*most_extreme_value),
                 xycoords='data',
-                xytext=(-80, -4),
+                xytext=(-160, -4),
                 textcoords='offset points',
                 arrowprops=dict(arrowstyle="->"))
             ax.set_ylabel(self.outcome_var)
@@ -155,10 +157,10 @@ class Plot(object):
             ax.plot(time ,cummulative_treated_outcome, 'b-', label=treated_label)
             ax.axvline(self.treatment_period-1, linestyle=':', color="gray")
             #ax.set_ylim(-1.1*most_extreme_value, 1.1*most_extreme_value)
-            ax.annotate('Treatment', 
+            ax.annotate(treatment_label, 
                 xy=(self.treatment_period-1, cummulative_treated_outcome[-1]*0.3),
                 xycoords='data',
-                xytext=(-80, -4),
+                xytext=(-160, -4),
                 textcoords='offset points',
                 arrowprops=dict(arrowstyle="->"))
             ax.set_ylabel(self.outcome_var)
@@ -195,10 +197,10 @@ class Plot(object):
 
             #ax.set_ylim(-1.1*most_extreme_value, 1.1*most_extreme_value)
             '''
-            ax.annotate('Treatment',
-                xy=(self.treatment_period-1, cummulative_treated_outcome[-1]*0.3),
+            ax.annotate(treatment_label,
+                xy=(self.treatment_period-1, self.treated_outcome[-1]*1.2),
                 xycoords='data',
-                xytext=(-80, -4),
+                xytext=(-160, -4),
                 textcoords='offset points',
                 arrowprops=dict(arrowstyle="->"))
             '''
@@ -216,10 +218,11 @@ class Plot(object):
             
             ax.set_title("Pre/post treatment root mean square prediction error")
     
-            ax.hist(self.pre_post_rmspe_ratio["post/pre"], bins=int(max(self.pre_post_rmspe_ratio["post/pre"])))
+            ax.hist(self.pre_post_rmspe_ratio["post/pre"], bins=int(max(self.pre_post_rmspe_ratio["post/pre"])), 
+                    color="#3F5D7D", histtype='bar', ec='black')
             
             ax.annotate(self.treated_unit,
-                xy=(self.pre_post_rmspe_ratio["post/pre"][0]-0.5, 2),
+                xy=(self.pre_post_rmspe_ratio["post/pre"][0]-0.5, 1),
                 xycoords='data',
                 xytext=(-100, 80),
                 textcoords='offset points',
@@ -227,6 +230,30 @@ class Plot(object):
             
             ax.set_ylabel("Frequency")
             ax.set_xlabel("Ratio")
+            if idx != n_panels:
+                plt.setp(ax.get_xticklabels(), visible=False)
+            idx += 1
+
+        if 'in-time placebo' in panels:
+
+            ax = plt.subplot(n_panels, 1, idx)
+            ax.set_title("In-time placebo: {} vs. {}".format(treated_label, synth_label))
+
+            ax.plot(time, self.in_time_placebo_outcome.T, 'r--', label=synth_label)
+            ax.plot(time ,self.treated_outcome_all, 'b-', label=treated_label)
+
+            ax.axvline(self.placebo_treatment_period, linestyle=':', color="gray")
+            ax.annotate('Placebo Treatment', 
+                xy=(self.placebo_treatment_period, self.treated_outcome_all[self.placebo_periods_pre_treatment]*1.2),
+                xytext=(-160, -4),
+                xycoords='data',
+                textcoords='offset points',
+
+                arrowprops=dict(arrowstyle="->"))
+            ax.set_ylabel(self.outcome_var)
+            ax.set_xlabel(self.time)
+            ax.legend()
+
             if idx != n_panels:
                 plt.setp(ax.get_xticklabels(), visible=False)
             idx += 1

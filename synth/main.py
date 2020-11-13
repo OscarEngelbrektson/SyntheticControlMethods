@@ -116,9 +116,12 @@ class SynthBase(Inferences, Plot):
 
         ###Validity tests
         self.in_space_placebos = None
-        self.in_time_placebo = None
-        self.placebo_w = None
+        self.in_space_placebo_w = None
         self.pre_post_rmspe_ratio = None
+        self.in_time_placebo_outcome = None
+        self.in_time_placebo_w = None
+        self.placebo_treatment_period = None
+        self.placebo_periods_pre_treatment = None
 
     
 class Synth(SynthBase):
@@ -134,7 +137,7 @@ class Synth(SynthBase):
         
         self.optimize(self.treated_outcome, self.treated_covariates,
                         self.control_outcome, self.control_covariates,
-                        False, 1)
+                        False, 8)
         '''
         #Visualize synthetic control
         self.plot(["original", "pointwise", "cumulative"], 
@@ -194,7 +197,7 @@ class Synth(SynthBase):
     def _process_treated_data(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, 
                             periods_all, periods_pre_treatment, covariates, n_covariates):
         '''
-        Extracts..
+        Extracts and formats outcome and covariate matrices for the treated unit
         '''
 
         treated_data_all = dataset[dataset[id_var] == treated_unit]
@@ -213,7 +216,7 @@ class Synth(SynthBase):
     def _process_control_data(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, n_controls, 
                             periods_all, periods_pre_treatment, covariates):
         '''
-        Extracts 
+        Extracts and formats outcome and covariate matrices for the control group
         '''
 
         #Every unit that is not the treated unit is control

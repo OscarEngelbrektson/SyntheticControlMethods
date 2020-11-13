@@ -32,7 +32,7 @@ class Inferences(object):
             or as part of a placebo-style validity test. If True, only placebo class attributes are affected.
         '''
 
-        assert type(placebo)==bool, "TypeError: Placebo must be True or False"
+        assert placebo in [False, "in-time", "in-space"], "TypeError: Placebo must False, 'in-time' or 'in-space'"
 
         n_controls = control_outcome.shape[1]
         
@@ -66,8 +66,11 @@ class Inferences(object):
                 self.synth_outcome = self.w.T @ self.control_outcome_all.T #Transpose to make it (n_periods x 1)
                 self.synth_covariates = self.control_covariates @ self.w
         
-        else:
-            self.placebo_w = w.value
+        elif placebo == "in-space":
+            self.in_space_placebo_w = w.value
+
+        elif placebo == "in-time":
+            self.in_time_placebo_w = w.value
             
         #Return loss
         return loss
@@ -153,11 +156,11 @@ class Inferences(object):
                             treated_placebo_covariates,
                             control_placebo_outcome[:self.treatment_period], 
                             control_placebo_covariates,
-                            True, 2)
+                            "in-space", 2)
             
             #Compute outcome of best synthetic control
-            print("placebo_w:", self.placebo_w.shape)
-            synthetic_placebo_outcome = self.placebo_w.T @ control_placebo_outcome.T
+            print("placebo_w:", self.in_space_placebo_w.shape)
+            synthetic_placebo_outcome = self.in_space_placebo_w.T @ control_placebo_outcome.T
 
             #Store it
             placebo_outcomes.append(synthetic_placebo_outcome)
@@ -249,16 +252,38 @@ class Inferences(object):
         Interpretation: we expect the treatment effect to be small in the "post-treatment periods" that pre-date the true treatment
 
         Returns:
-            matrix (n_controls x n_periods) with the outcome for each synthetic control
+            (1 x n_periods) matrix with the outcome for in-time placebo
         '''
-        return NotImplementedError
 
+        periods_pre_treatment = self.dataset.loc[self.dataset[self.time]<treatment_period][self.time].nunique()
+
+        #Format necessary matrices, but do so with the new, earlier treatment period
         ###Get treated unit matrices first###
         in_time_placebo_treated_outcome_all, in_time_placebo_treated_outcome, in_time_placebo_treated_covariates = self._process_treated_data(
-            dataset, outcome_var, id_var, time_var, 
-            treatment_period, treated_unit, periods_all, 
-            periods_pre_treatment, covariates, n_covariates
+            self.dataset, self.outcome_var, self.id, self.time, 
+            treatment_period, self.treated_unit, self.periods_all, 
+            periods_pre_treatment, self.covariates, self.n_covariates
         )
+
+        ### Now for control unit matrices ###
+        in_time_placebo_control_outcome_all, in_time_placebo_control_outcome, in_time_placebo_control_covariates = self._process_control_data(
+            self.dataset, self.outcome_var, self.id, self.time, 
+            treatment_period, self.treated_unit, self.n_controls, 
+            self.periods_all, periods_pre_treatment, self.covariates
+        )
+
+        #Run find synthetic control from shortened pre-treatment period 
+        self.optimize(in_time_placebo_treated_outcome, in_time_placebo_treated_covariates,
+                        in_time_placebo_control_outcome, in_time_placebo_control_covariates,
+                        "in-time", 5)
+        
+        #Compute placebo outcomes using placebo_w vector from optimize
+        placebo_outcome = self.in_time_placebo_w.T @ in_time_placebo_control_outcome_all.T
+
+        #Store relevant results as class attributes, for plotting and retrieval
+        self.placebo_treatment_period = treatment_period
+        self.placebo_periods_pre_treatment = periods_pre_treatment
+        self.in_time_placebo_outcome = placebo_outcome
 
 
     

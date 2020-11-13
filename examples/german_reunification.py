@@ -9,14 +9,21 @@ data = data.drop(columns="code", axis=1)
 
 #Fit Synthetic Control
 synth = Synth(data, "gdp", "country", "year", 1990, "West Germany")
+synth.in_time_placebo(1982)
+synth.plot(['in-time placebo'], in_space_exclusion_multiple=5, treated_label="West Germany",
+            synth_label="Synthetic West Germany")
+
+synth.plot(["original", "pointwise", "cumulative"], treated_label="West Germany", 
+            synth_label="Synthetic West Germany", treatment_label="German Reunification")
 
 
-#Plot validity tests
+#Perform validity tests
+synth.in_time_placebo(1976) #Placebo treatment period is 1986, 4 years earlier
 synth.in_space_placebo()
-#synth.pre_post_rmspe_ratio.to_csv("rmspe_df.csv", index=False, header=True)
-synth.plot(['in-space placebo', 'pre/post rmspe'], in_space_exclusion_multiple=5)
-synth.pre_post_rmspe_ratio.to_csv("pre_post_rmspe_ratio.csv", index=False, header=True)
-#np.savetxt("pre_post_rmspe_ratio.csv", synth.pre_post_rmspe_ratio, delimiter=",")
+
+#Visualize validity tests
+synth.plot(['in-space placebo', 'pre/post rmspe', 'in-time placebo'], in_space_exclusion_multiple=5, treated_label="West Germany",
+            synth_label="Synthetic West Germany")
 
 '''
 #Compare covariates from treated unit and synthetic control
