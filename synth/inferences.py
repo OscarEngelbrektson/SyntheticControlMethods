@@ -243,7 +243,7 @@ class Inferences(object):
         return post_treatment, pre_treatment
 
 
-    def in_time_placebo(self, treatment_period):
+    def in_time_placebo(self, placebo_treatment_period):
         '''
         Fits a synthetic control to the treated unit,
         with a pre-treatment period shorter than the true pre-treatment period,
@@ -255,20 +255,20 @@ class Inferences(object):
             (1 x n_periods) matrix with the outcome for in-time placebo
         '''
 
-        periods_pre_treatment = self.dataset.loc[self.dataset[self.time]<treatment_period][self.time].nunique()
+        periods_pre_treatment = self.dataset.loc[self.dataset[self.time]<placebo_treatment_period][self.time].nunique()
 
         #Format necessary matrices, but do so with the new, earlier treatment period
         ###Get treated unit matrices first###
         in_time_placebo_treated_outcome_all, in_time_placebo_treated_outcome, in_time_placebo_treated_covariates = self._process_treated_data(
             self.dataset, self.outcome_var, self.id, self.time, 
-            treatment_period, self.treated_unit, self.periods_all, 
+            placebo_treatment_period, self.treated_unit, self.periods_all, 
             periods_pre_treatment, self.covariates, self.n_covariates
         )
 
         ### Now for control unit matrices ###
         in_time_placebo_control_outcome_all, in_time_placebo_control_outcome, in_time_placebo_control_covariates = self._process_control_data(
             self.dataset, self.outcome_var, self.id, self.time, 
-            treatment_period, self.treated_unit, self.n_controls, 
+            placebo_treatment_period, self.treated_unit, self.n_controls, 
             self.periods_all, periods_pre_treatment, self.covariates
         )
 
@@ -281,7 +281,7 @@ class Inferences(object):
         placebo_outcome = self.in_time_placebo_w.T @ in_time_placebo_control_outcome_all.T
 
         #Store relevant results as class attributes, for plotting and retrieval
-        self.placebo_treatment_period = treatment_period
+        self.placebo_treatment_period = placebo_treatment_period
         self.placebo_periods_pre_treatment = periods_pre_treatment
         self.in_time_placebo_outcome = placebo_outcome
 
