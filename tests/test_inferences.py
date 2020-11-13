@@ -11,3 +11,16 @@
 # limitations under the License.
 
 #Will add tests here
+
+from __future__ import absolute_import, division, print_function
+
+import numpy as np
+import pandas as pd
+import unittest
+
+from synth.inferences import Inferences
+
+class TestValidityInferences(unittest.TestCase):
+
+    def test_normalize_placebos(self):
+        

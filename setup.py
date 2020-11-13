@@ -1,5 +1,12 @@
 from setuptools import setup, find_packages
 
+import os
+import re
+import sys
+
+from codecs import open
+
+
 install_requires = [
         'numpy',
         'scipy==1.4.1',
@@ -9,23 +16,31 @@ install_requires = [
         'jinja2>=2.10'
     ]
 
-setup(name='SyntheticControl', version='0.0.1', packages=find_packages(), install_requires=install_requires)
-'''
+
+#Get version
+here = os.path.abspath(os.path.dirname(__file__))
+_version = {}
+_version_path = os.path.join(here, 'synth', '__version__.py')
+with open(_version_path, 'r', 'utf-8') as f:
+    exec(f.read(), _version)
+
+#Get README.md for long description
+with open('README.md', 'r', 'utf-8') as f:
+    readme = f.read()
+
 setup(
-    name='pysynth',
+    name='SyntheticControlMethods',
     version=_version['__version__'],
     author='Oscar Engelbrektson',
     author_email='engelbrektson.oscar@gmail.com',
     url='https://github.com/OscarEngelbrektson/SyntheticControl',
-    description= "Python version of Google's Causal Impact model",
+    description= "Python library implementing various Synthetic Control Methods",
     long_description=readme,
     long_description_content_type='text/markdown',
     packages=packages,
     include_package_data=True,
     install_requires=install_requires,
-    tests_require=tests_require,
     setup_requires=setup_requires,
-    extras_require=extras_require,
     license='MIT',
     classifiers=[
         'Development Status :: 4 - Beta',
@@ -44,7 +59,4 @@ setup(
         'Topic :: Causal Inference',
         'Topic :: Impact Evaluation',
     ],
-    cmdclass={'test': PyTest},
-    test_suite='tests'
 )
-'''
