@@ -17,7 +17,7 @@ In this simple example, we replicate [Abadie, Diamond and Hainmueller (2015)](ht
 ```python
 #Import packages
 import pandas as pd
-from synth import Synth
+from SyntheticControlMethods import Synth
 
 #Import data
 data = pd.read_csv("examples/german_reunification.csv")

@@ -15,8 +15,8 @@ from __future__ import absolute_import, division, print_function
 import pandas as pd
 import numpy as np
 
-from synth.plot import Plot
-from synth.inferences import Inferences
+from SyntheticControlMethods.plot import Plot
+from SyntheticControlMethods.inferences import Inferences
 
 class SynthBase(Inferences, Plot):
     
@@ -137,11 +137,10 @@ class Synth(SynthBase):
         self.optimize(self.treated_outcome, self.treated_covariates,
                         self.control_outcome, self.control_covariates,
                         False, 8)
-        '''
+        
         #Visualize synthetic control
         self.plot(["original", "pointwise", "cumulative"], 
                     (15, 12), self.treated_unit)
-        '''
     
     def _process_input_data(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs):
         '''
@@ -199,11 +198,11 @@ class Synth(SynthBase):
         Extracts and formats outcome and covariate matrices for the treated unit
         '''
 
-        treated_data_all = dataset[dataset[id_var] == treated_unit]
+        treated_data_all = dataset.loc[dataset[id_var] == treated_unit]
         treated_outcome_all = np.array(treated_data_all[outcome_var]).reshape(periods_all,1) #All outcomes
         
         #Only pre-treatment
-        treated_data = treated_data_all[dataset[time_var] < treatment_period]
+        treated_data = treated_data_all.loc[dataset[time_var] < treatment_period]
         #Extract outcome and shape as matrix
         treated_outcome = np.array(treated_data[outcome_var]).reshape(periods_pre_treatment, 1)
         #Columnwise mean of each covariate in pre-treatment period for treated unit, shape as matrix
@@ -219,11 +218,11 @@ class Synth(SynthBase):
         '''
 
         #Every unit that is not the treated unit is control
-        control_data_all = dataset[dataset[id_var] != treated_unit]
+        control_data_all = dataset.loc[dataset[id_var] != treated_unit]
         control_outcome_all = np.array(control_data_all[outcome_var]).reshape(n_controls, periods_all).T #All outcomes
         
         #Only pre-treatment
-        control_data = control_data_all[dataset[time_var] < treatment_period]
+        control_data = control_data_all.loc[dataset[time_var] < treatment_period]
         #Extract outcome, then shape as matrix
         control_outcome = np.array(control_data[outcome_var]).reshape(n_controls, periods_pre_treatment).T
         

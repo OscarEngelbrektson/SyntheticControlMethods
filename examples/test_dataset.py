@@ -3,7 +3,7 @@
 #Import packages
 import pandas as pd
 import numpy as np
-from synth import Synth
+from SyntheticControlMethods import Synth
 
 #Import data
 data = pd.read_csv("/Users/oscarengelbrektson/Documents/test_dataset.csv")

@@ -10,5 +10,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from synth.__version__ import __version__
-from synth.main import Synth
+from SyntheticControlMethods.__version__ import __version__
+from SyntheticControlMethods.main import Synth

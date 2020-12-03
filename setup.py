@@ -21,7 +21,7 @@ install_requires = [
 #Get version
 here = os.path.abspath(os.path.dirname(__file__))
 _version = {}
-_version_path = os.path.join(here, 'synth', '__version__.py')
+_version_path = os.path.join(here, 'SyntheticControlMethods', '__version__.py')
 with open(_version_path, 'r', 'utf-8') as f:
     exec(f.read(), _version)
 
@@ -39,8 +39,7 @@ setup(
     description= "A Python package for causal inference using various Synthetic Control Methods",
     long_description=readme,
     long_description_content_type='text/markdown',
-    packages=find_packages(where="synth"),
-    package_dir={'': 'synth'},
+    packages=find_packages(),
     include_package_data=True,
     install_requires=install_requires,
     license='MIT',

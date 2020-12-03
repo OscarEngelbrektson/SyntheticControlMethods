@@ -1,9 +1,0 @@
-LICENSE
-README.md
-setup.cfg
-setup.py
-synth/SyntheticControlMethods.egg-info/PKG-INFO
-synth/SyntheticControlMethods.egg-info/SOURCES.txt
-synth/SyntheticControlMethods.egg-info/dependency_links.txt
-synth/SyntheticControlMethods.egg-info/requires.txt
-synth/SyntheticControlMethods.egg-info/top_level.txt
