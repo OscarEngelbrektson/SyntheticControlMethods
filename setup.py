@@ -14,7 +14,8 @@ install_requires = [
         'cvxpy',
         'matplotlib>=2.2.3',
         'jinja2>=2.10'
-    ]
+    ] #'warning'
+
 
 
 #Get version
@@ -33,10 +34,13 @@ setup(
     version=_version['__version__'],
     author='Oscar Engelbrektson',
     author_email='oscar.engelbrektson@gmail.com',
-    url='https://github.com/OscarEngelbrektson/SyntheticControl',
+    url='https://github.com/OscarEngelbrektson/SyntheticControlMethods',
+    download_url='https://github.com/OscarEngelbrektson/SyntheticControlMethods',
     description= "A Python package for causal inference using various Synthetic Control Methods",
     long_description=readme,
     long_description_content_type='text/markdown',
+    packages=find_packages(where="synth"),
+    package_dir={'': 'synth'},
     include_package_data=True,
     install_requires=install_requires,
     license='MIT',

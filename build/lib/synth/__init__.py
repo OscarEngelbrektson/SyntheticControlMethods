@@ -10,6 +10,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-VERSION = (1, 0, 1)
-
-__version__ = '.'.join([str(e) for e in VERSION])
+from synth.__version__ import __version__
+from synth.main import Synth

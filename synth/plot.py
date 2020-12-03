@@ -13,6 +13,11 @@
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
+#import warning
+
+#class PlotWarning(UserWarning):
+#    '''Custom warning class for warnings related to plotting'''
+#    pass
 
 class Plot(object):
     '''
@@ -88,6 +93,7 @@ class Plot(object):
         fig = plt.figure(figsize=figsize)
         valid_panels = ['original', 'pointwise', 'cumulative', 
                         'in-space placebo', 'pre/post rmspe', 'in-time placebo']
+        solo_panels = ['pre/post rmspe']
         for panel in panels:
             if panel not in valid_panels:
                 raise ValueError(
@@ -95,6 +101,10 @@ class Plot(object):
                         panel, ', '.join(['"{}"'.format(e) for e in valid_panels])
                     )
                 )
+            if panel in solo_panels and len(panels) > 1:
+                print("{} is meant to have a different x-axis, plotting it together with other plots may hide that").format(panel)
+                #warning.warn('Validity plots should be plotted alone', PlotWarning)
+                
         
         n_panels = len(panels)
         ax = plt.subplot(n_panels, 1, 1)
@@ -173,7 +183,7 @@ class Plot(object):
         if 'in-space placebo' in panels:
             #assert self.in_space_placebos != None, "Must run in_space_placebo() before you can plot!"
             
-            ax = plt.subplot(n_panels, 1, idx, sharex=ax)
+            ax = plt.subplot(n_panels, 1, idx)
             zero_line = np.zeros(self.periods_all)
             normalized_treated_outcome = self.treated_outcome_all - synth.T
             
