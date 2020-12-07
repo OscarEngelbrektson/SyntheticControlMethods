@@ -11,4 +11,4 @@
 # limitations under the License.
 
 from SyntheticControlMethods.__version__ import __version__
-from SyntheticControlMethods.main import Synth
+from SyntheticControlMethods.main import Synth, DiffSynth
