@@ -69,7 +69,6 @@ class Inferences(object):
                 data.optimize(*args)
             
         if self.method == "DSC":
-            print("W", data.w)
             self._update_original_data(placebo)
 
         return
@@ -163,7 +162,7 @@ class Inferences(object):
                             control_placebo_outcome[:data.periods_pre_treatment], 
                             control_placebo_covariates,
                             data,
-                            "in-space", 4)
+                            "in-space", 3)
             
             #Compute outcome of best synthetic control
             if self.method == "SC":
@@ -248,19 +247,21 @@ class Inferences(object):
         include_donor_pool_average: bool. Default=False.
         Whether or not include a third column with the simple average for the entire donor pool.
         '''
-        
+
+        data = self.original_data
+
         if not include_donor_pool_average:
             
-            table = pd.DataFrame({treated_label: self.treated_covariates.ravel(), 
-                                 synth_label: (self.synth_covariates).ravel()},
-                                index=self.covariates)
+            table = pd.DataFrame({treated_label: data.treated_covariates.ravel(), 
+                                 synth_label: (data.synth_covariates).ravel()},
+                                index=data.covariates)
         
         else:
             
-            table = pd.DataFrame({treated_label: self.treated_covariates.ravel(), 
-                                 synth_label: (self.synth_covariates).ravel(),
-                                 donor_pool_label: self.control_covariates.mean(axis=1)},
-                                index=self.covariates)
+            table = pd.DataFrame({treated_label: data.treated_covariates.ravel(), 
+                                 synth_label: (data.synth_covariates).ravel(),
+                                 donor_pool_label: data.control_covariates.mean(axis=1)},
+                                index=data.covariates)
         return table
 
     def _normalize_placebos(self, placebo_outcomes):

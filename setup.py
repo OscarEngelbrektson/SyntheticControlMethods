@@ -11,9 +11,7 @@ install_requires = [
         'pandas',
         'cvxpy',
         'matplotlib>=2.2.3',
-        'jinja2>=2.10',
-        'warning',
-        'copy',
+        'jinja2>=2.10'
     ]
 
 #Get version
