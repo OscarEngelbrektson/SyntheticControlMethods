@@ -3,9 +3,7 @@ from setuptools import setup, find_packages
 import os
 import re
 import sys
-
 from codecs import open
-
 
 install_requires = [
         'numpy',
@@ -13,10 +11,10 @@ install_requires = [
         'pandas',
         'cvxpy',
         'matplotlib>=2.2.3',
-        'jinja2>=2.10'
-    ] #'warning'
-
-
+        'jinja2>=2.10',
+        'warning',
+        'copy',
+    ]
 
 #Get version
 here = os.path.abspath(os.path.dirname(__file__))

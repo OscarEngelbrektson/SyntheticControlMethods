@@ -14,11 +14,12 @@ from __future__ import absolute_import, division, print_function
 
 import pandas as pd
 import numpy as np
+import copy
 
 from SyntheticControlMethods.plot import Plot
 from SyntheticControlMethods.inferences import Inferences
 
-class SynthBase(Inferences, Plot):
+class SynthBase(object):
     
     def __init__(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, 
                 covariates, periods_all, periods_pre_treatment, n_controls, n_covariates,
@@ -110,6 +111,7 @@ class SynthBase(Inferences, Plot):
         self.v = None
         self.treatment_effect = treatment_effect #If known
         self.synth_outcome = None
+        self.synth_constant = None
         self.synth_covariates = None
         self.min_loss = float("inf")
         self.fail_count = 0 #Used to limit number of optimization attempts
@@ -119,28 +121,13 @@ class SynthBase(Inferences, Plot):
         self.in_space_placebo_w = None
         self.pre_post_rmspe_ratio = None
         self.in_time_placebo_outcome = None
+        self.in_time_placebo_treated_outcome = None
         self.in_time_placebo_w = None
         self.placebo_treatment_period = None
         self.placebo_periods_pre_treatment = None
 
-    
-class Synth(SynthBase):
 
-    def __init__(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs):
-
-        checked_input = self._process_input_data(
-            dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs
-        )
-        super(Synth, self).__init__(**checked_input)
-
-        #Get synthetic Control
-        self.optimize(self.treated_outcome, self.treated_covariates,
-                        self.control_outcome, self.control_covariates,
-                        False, 8)
-        
-        #Visualize synthetic control
-        self.plot(["original", "pointwise", "cumulative"], 
-                    (15, 12), self.treated_unit)
+class DataProcessor(object):
     
     def _process_input_data(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs):
         '''
@@ -234,7 +221,97 @@ class Synth(SynthBase):
                 set_index(np.arange(len(control_data[covariates])) // periods_pre_treatment).mean(level=0)).T
 
         return control_outcome_all, control_outcome, control_covariates
+    
+class Synth(Inferences, Plot, DataProcessor):
 
+    def __init__(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs):
+        self.method = "SC"
+
+        original_checked_input = self._process_input_data(
+            dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs
+        )
+        self.original_data = SynthBase(**original_checked_input)
+
+        #Get synthetic Control
+        self.optimize(self.original_data.treated_outcome, self.original_data.treated_covariates,
+                    self.original_data.control_outcome, self.original_data.control_covariates, 
+                    self.original_data, False, 8)
+        
+        #Visualize synthetic control
+        self.plot(["original", "pointwise", "cumulative"],
+                    (15, 12),
+                    self.original_data.treated_unit)
+
+class DiffSynth(Inferences, Plot, DataProcessor):
+
+    def __init__(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, 
+                not_diff_cols=None, **kwargs):
+        self.method = "DSC"
+
+        #Process original data - will be used in plotting
+        original_checked_input = self._process_input_data(
+            dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs
+        )
+        self.original_data = SynthBase(**original_checked_input)
+        self.original_data.dataset.to_csv("original_data.csv", index=False, header=True)
+
+        #Process differenced data - will be used in inference
+        modified_dataset = self.difference_data(dataset, not_diff_cols)
+        modified_checked_input = self._process_input_data(
+            modified_dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs
+        )
+        self.modified_data = SynthBase(**modified_checked_input)
+        self.original_data.dataset.to_csv("second_original_data.csv", index=False, header=True)
+
+        #Get synthetic Control
+        self.optimize(self.modified_data.treated_outcome, self.modified_data.treated_covariates,
+                    self.modified_data.control_outcome, self.modified_data.control_covariates, 
+                    self.modified_data, False, 1)
+        '''
+        #Visualize synthetic control
+        self.plot(["original", "pointwise", "cumulative"],
+                    (15, 12),
+                    self.original_data.treated_unit)
+        '''
+
+    def difference_data(self, dataset, not_diff_cols):
+        '''
+        Takes an appropriately formatted, unprocessed dataset
+        returns dataset with first-difference values (change from previous time period) 
+        computed unitwise for the outcome and all covariates
+        Ready to fit a Differenced Synthetic Control
+
+        Transformation method - First Differencing: 
+        
+        Additional processing:
+
+        1. Imputes missing values using linear interpolation. (first difference is undefined if two consecutive periods are not present)
+        '''
+        #Make deepcopy of original data as base
+        modified_dataset = copy.deepcopy(dataset)
+        data = self.original_data
+
+        #Binary flag for whether there are columns to ignore
+        ignore_some_cols = not_diff_cols == None
+
+        #Compute difference of outcome variable
+        modified_dataset[data.outcome_var] = modified_dataset.groupby(data.id)[data.outcome_var].apply(lambda unit: unit.interpolate(method='linear', limit_direction="both")).diff()
+        
+        #For covariates
+        for col in data.covariates:
+            #Fill in missing values using unitwise linear interpolation
+            modified_dataset[col] = modified_dataset.groupby(data.id)[col].apply(lambda unit: unit.interpolate(method='linear', limit_direction="both"))
+            
+            #Compute change from previous period
+            if ignore_some_cols is not None:
+                if col not in not_diff_cols:
+                    modified_dataset[col].diff()
+
+        #Drop first time period for every unit as the change from the previous period is undefined
+        modified_dataset.drop(modified_dataset.loc[modified_dataset[data.time]==modified_dataset[data.time].min()].index, inplace=True)
+        #Return resulting dataframe
+        return modified_dataset
+    
     def demean_data(self):
         '''
         Takes an appropriately formatted, unprocessed dataset
@@ -244,18 +321,7 @@ class Synth(SynthBase):
         Transformation method - MeanSubtraction: 
         Subtracting the mean of the corresponding variable and unit from every observation
         '''
+        raise NotImplementedError
+        
         mean_subtract_cols = self.dataset.groupby(self.id).apply(lambda x: x - np.mean(x)).drop(columns=[self.time], axis=1)
         return pd.concat([data[["ID", "Time"]], mean_subtract_cols], axis=1)
-    
-    def difference_data(self):
-        '''
-        Takes an appropriately formatted, unprocessed dataset
-        returns dataset with first-difference values (change from previous time period) 
-        computed unitwise for the outcome and all covariates
-        Ready to fit a Differenced Synthetic Control
-
-        Transformation method - MeanSubtraction: 
-        Subtracting the mean of the corresponding variable and unit from every observation
-        '''
-        first_difference_cols = self.dataset.groupby(self.id).diff().drop(columns=[self.time], axis=1)
-        return pd.concat([self.dataset[["ID", "Time"]], mean_subtract_cols], axis=1)

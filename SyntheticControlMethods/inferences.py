@@ -18,11 +18,66 @@ import cvxpy as cvx
 from scipy.optimize import minimize, differential_evolution
 
 class Inferences(object):
+    
+    def optimize(self,
+                treated_outcome, treated_covariates,
+                control_outcome, control_covariates, 
+                data,
+                placebo,
+                steps=8, verbose=False):
+        '''
+        Solves the nested optimization function of finding the optimal synthetic control
+
+        placebo: bool
+            indicates whether the optimization is ran for finding the real synthetic control
+            or as part of a placebo-style validity test. If True, only placebo class attributes are affected.
+
+        steps: int
+            The number of different initializations of v_0 the gradient descent optimization is ran for
+            Higher values mean longer running time but higher chances of finding a globally optimal solution
+
+        verbose: bool, default=False
+            If true, prints additional detail regarding the state of the optimization
+        '''
+        args = (treated_outcome, treated_covariates,
+                control_outcome, control_covariates,
+                placebo, data)
+        
+        for step in range(steps):
+
+            #Dirichlet distribution returns a valid pmf over n_covariates states
+            v_0 = np.random.dirichlet(np.ones(data.n_covariates), size=1)
+
+            #Required to have non negative values
+            bnds = tuple((0,1) for _ in range(data.n_covariates))
+            
+            #Optimze
+            res = minimize(self.total_loss, v_0,  args=(args),
+                            method='L-BFGS-B', bounds=bnds, 
+                            options={'gtol': 1e-6,'disp':3, 'iprint':3})
+            
+            if verbose:
+                print("Successful:", res.success)
+                print(res.message)
+        
+        #If sampler did not converge, try again up to times before admitting defeat
+        try:
+            res.x
+        except:
+            data.fail_count += 1
+            if data.fail_count <= 1:
+                data.optimize(*args)
+            
+        if self.method == "DSC":
+            print("W", data.w)
+            self._update_original_data(placebo)
+
+        return
 
     def total_loss(self, v_0, 
                     treated_outcome, treated_covariates,
                     control_outcome, control_covariates, 
-                    placebo):
+                    placebo, data):
         '''
         Solves for w*(v) that minimizes loss function 1 given v,
         Returns loss from loss function 2 with w=w*(v)
@@ -36,7 +91,7 @@ class Inferences(object):
 
         n_controls = control_outcome.shape[1]
         
-        V = np.zeros(shape=(self.n_covariates, self.n_covariates))
+        V = np.zeros(shape=(data.n_covariates, data.n_covariates))
         np.fill_diagonal(V, v_0)
         
         # Construct the problem - constrain weights to be non-negative
@@ -59,72 +114,22 @@ class Inferences(object):
        
         #If loss is smaller than previous minimum, update loss, w and v
         if not placebo:
-            if loss < self.min_loss:
-                self.min_loss = loss
-                self.w = w.value
-                self.v = v_0
-                self.synth_outcome = self.w.T @ self.control_outcome_all.T #Transpose to make it (n_periods x 1)
-                self.synth_covariates = self.control_covariates @ self.w
+            if loss < data.min_loss:
+                data.min_loss = loss
+                data.w = w.value
+                data.v = v_0
+                data.synth_outcome = data.w.T @ data.control_outcome_all.T #Transpose to make it (n_periods x 1)
+                data.synth_covariates = data.control_covariates @ data.w
         
         elif placebo == "in-space":
-            self.in_space_placebo_w = w.value
+            data.in_space_placebo_w = w.value
 
         elif placebo == "in-time":
-            self.in_time_placebo_w = w.value
+            data.in_time_placebo_w = w.value
             
         #Return loss
         return loss
 
-    
-    def optimize(self,
-                treated_outcome, treated_covariates,
-                control_outcome, control_covariates,
-                placebo,
-                steps=8, verbose=False):
-        '''
-        Solves the nested optimization function of finding the optimal synthetic control
-
-        placebo: bool
-            indicates whether the optimization is ran for finding the real synthetic control
-            or as part of a placebo-style validity test. If True, only placebo class attributes are affected.
-
-        steps: int
-            The number of different initializations of v_0 the gradient descent optimization is ran for
-            Higher values mean longer running time but higher chances of finding a globally optimal solution
-
-        verbose: bool, default=False
-            If true, prints additional detail regarding the state of the optimization
-        '''
-        args = (treated_outcome, treated_covariates,
-                control_outcome, control_covariates,
-                placebo)
-        
-        for step in range(steps):
-
-            #Dirichlet distribution returns a valid pmf over n_covariates states
-            v_0 = np.random.dirichlet(np.ones(self.n_covariates), size=1)
-
-            #Required to have non negative values
-            bnds = tuple((0,1) for _ in range(self.n_covariates))
-            
-            #Optimze
-            res = minimize(self.total_loss, v_0,  args=(args),
-                            method='L-BFGS-B', bounds=bnds, 
-                            options={'gtol': 1e-6,'disp':3, 'iprint':3})
-            
-            if verbose:
-                print("Successful:", res.success)
-                print(res.message)
-        
-        #If sampler did not converge, try again up to times before admitting defeat
-        try:
-            res.x
-        except:
-            self.fail_count += 1
-            if self.fail_count <= 1:
-                self.optimize(*args)
-
-        return
 
     def in_space_placebo(self):
         '''
@@ -139,110 +144,48 @@ class Inferences(object):
         2. For loop over all control units, fitting a control to each
         3. Store the outcome values for each synthetic control
         '''
+        #See which instance of SynthData to use depending on if we are using DiffSynth or Synth
+        data = self.original_data if self.method=='SC' else self.modified_data
+
         placebo_outcomes = []
-        for i in range(self.n_controls):
+        for i in range(data.n_controls):
             #Format placebo and control data
-            treated_placebo_outcome = self.control_outcome_all[:,i].reshape(self.periods_all, 1)
-            
+            treated_placebo_outcome = data.control_outcome_all[:,i].reshape(data.periods_all, 1)
 
-            treated_placebo_covariates = self.control_covariates[:,i].reshape(self.n_covariates, 1)
+            treated_placebo_covariates = data.control_covariates[:,i].reshape(data.n_covariates, 1)
 
-            control_placebo_outcome = np.array([self.control_outcome_all[:,j] for j in range(self.n_controls) if j != i]).T
-            control_placebo_covariates = np.array([[self.control_covariates[x,j] for j in range(self.n_controls) if j != i] for x in range(self.n_covariates)])
-            print("Control outcome:", control_placebo_outcome.shape)
-            print("Control covariates:", control_placebo_covariates.shape)
+            control_placebo_outcome = np.array([data.control_outcome_all[:,j] for j in range(data.n_controls) if j != i]).T
+            control_placebo_covariates = np.array([[data.control_covariates[x,j] for j in range(data.n_controls) if j != i] for x in range(data.n_covariates)])
 
             #Solve for best synthetic control weights
-            self.optimize(treated_placebo_outcome[:self.treatment_period], 
+            self.optimize(treated_placebo_outcome[:data.periods_pre_treatment], 
                             treated_placebo_covariates,
-                            control_placebo_outcome[:self.treatment_period], 
+                            control_placebo_outcome[:data.periods_pre_treatment], 
                             control_placebo_covariates,
-                            "in-space", 2)
+                            data,
+                            "in-space", 4)
             
             #Compute outcome of best synthetic control
-            print("placebo_w:", self.in_space_placebo_w.shape)
-            synthetic_placebo_outcome = self.in_space_placebo_w.T @ control_placebo_outcome.T
+            if self.method == "SC":
+                synthetic_placebo_outcome = data.in_space_placebo_w.T @ control_placebo_outcome.T
+
+            else: #If method == 'DSC'
+                _, synthetic_placebo_outcome = self._get_dsc_outcome(data.in_space_placebo_w,
+                                                                np.array([self.original_data.control_outcome_all[:,j] for j in range(data.n_controls) if j != i]).T,
+                                                                data.periods_pre_treatment,
+                                                                self.original_data.control_outcome[:,i].reshape(data.periods_pre_treatment+1, 1))
 
             #Store it
             placebo_outcomes.append(synthetic_placebo_outcome)
         
         #Compute pre-post RMSPE Ratio
-        self.pre_post_rmspe_ratio = self._pre_post_rmspe_ratios(placebo_outcomes)
-        self.in_space_placebos = self._normalize_placebos(placebo_outcomes) 
-        return
-
-    def _normalize_placebos(self, placebo_outcomes):
-        '''
-        Takes array of synthetic placebo outcomes
-
-        returns array of same dimension where the control unit outcome has been subtracted from
-        the synthetic placebo
-        '''
-        #Initialize ratio list with treated unit
-        normalized_placebo_outcomes = []
-
-        #Add each control unit and respective synthetic control
-        for i in range(self.n_controls):
-            normalized_outcome = (placebo_outcomes[i] - self.control_outcome_all[:, i].T).T
-            normalized_placebo_outcomes.append(normalized_outcome)
-
-        return normalized_placebo_outcomes
-
-    def _pre_post_rmspe_ratios(self, placebo_outcomes):
-        '''
-        Computes the pre-post root mean square prediction error for all
-        in-place placebos and the treated units
-        '''
-        #Initialize ratio list with treated unit
-        post_ratio_list, pre_ratio_list = [], []
-
-        #Add treated unit
-        treated_post, treated_pre = self._pre_post_rmspe(self.synth_outcome.T, self.treated_outcome_all) #works
-        post_ratio_list.append(treated_post)
-        pre_ratio_list.append(treated_pre)
-
-
-        #Add each control unit and respective synthetic control
-        for i in range(self.n_controls):
-            post_ratio, pre_ratio = self._pre_post_rmspe(placebo_outcomes[i], self.control_outcome_all[:, i].T, placebo=True)
-            post_ratio_list.append(post_ratio)
-            pre_ratio_list.append(pre_ratio)
-
-        #Combine in Dataframe
-        rmspe_df = pd.DataFrame({"pre_rmspe": pre_ratio_list,
-                                "post_rmspe": post_ratio_list},
-                                columns=["pre_rmspe", "post_rmspe"])
-        #Compute post/pre rmspe ratio
-        rmspe_df["post/pre"] = rmspe_df["post_rmspe"] / rmspe_df["pre_rmspe"]
+        data.pre_post_rmspe_ratio = self._pre_post_rmspe_ratios(placebo_outcomes)
+        data.in_space_placebos = self._normalize_placebos(placebo_outcomes)
         
-        #Return dataframe object
-        return rmspe_df
+        if self.method == "DSC":
+            self._update_original_data('in-space')
 
-    def _pre_post_rmspe(self, synth_outcome, treated_outcome, placebo=False):
-        '''
-        Input: Takes two outcome time series of the same dimensions
-
-        Returns:
-        post-treatment root mean square prediction error
-        and
-        pre-treatment root mean square prediction error
-        '''
-
-        t = self.periods_pre_treatment
-
-        if not placebo:
-            pre_treatment = np.sqrt(((treated_outcome[:t] - synth_outcome[:t]) ** 2).mean())
-    
-            post_treatment = np.sqrt(((treated_outcome[t:] - synth_outcome[t:]) ** 2).mean())
-
-        else:
-            pre_treatment = np.sqrt(((treated_outcome[:t] - synth_outcome[0][:t]) ** 2).mean())
-    
-            post_treatment = np.sqrt(((treated_outcome[t:] - synth_outcome[0][t:]) ** 2).mean())
-
-
-        return post_treatment, pre_treatment
-
+        return
 
     def in_time_placebo(self, placebo_treatment_period):
         '''
@@ -255,37 +198,41 @@ class Inferences(object):
         Returns:
             (1 x n_periods) matrix with the outcome for in-time placebo
         '''
+        data = self.original_data if self.method=='SC' else self.modified_data
 
-        periods_pre_treatment = self.dataset.loc[self.dataset[self.time]<placebo_treatment_period][self.time].nunique()
+        periods_pre_treatment = data.dataset.loc[data.dataset[data.time]<placebo_treatment_period][data.time].nunique()
 
         #Format necessary matrices, but do so with the new, earlier treatment period
         ###Get treated unit matrices first###
         in_time_placebo_treated_outcome_all, in_time_placebo_treated_outcome, in_time_placebo_treated_covariates = self._process_treated_data(
-            self.dataset, self.outcome_var, self.id, self.time, 
-            placebo_treatment_period, self.treated_unit, self.periods_all, 
-            periods_pre_treatment, self.covariates, self.n_covariates
+            data.dataset, data.outcome_var, data.id, data.time, 
+            placebo_treatment_period, data.treated_unit, data.periods_all, 
+            periods_pre_treatment, data.covariates, data.n_covariates
         )
 
         ### Now for control unit matrices ###
         in_time_placebo_control_outcome_all, in_time_placebo_control_outcome, in_time_placebo_control_covariates = self._process_control_data(
-            self.dataset, self.outcome_var, self.id, self.time, 
-            placebo_treatment_period, self.treated_unit, self.n_controls, 
-            self.periods_all, periods_pre_treatment, self.covariates
+            data.dataset, data.outcome_var, data.id, data.time, 
+            placebo_treatment_period, data.treated_unit, data.n_controls, 
+            data.periods_all, periods_pre_treatment, data.covariates
         )
 
         #Run find synthetic control from shortened pre-treatment period 
         self.optimize(in_time_placebo_treated_outcome, in_time_placebo_treated_covariates,
                         in_time_placebo_control_outcome, in_time_placebo_control_covariates,
+                        data,
                         "in-time", 5)
-        
         #Compute placebo outcomes using placebo_w vector from optimize
-        placebo_outcome = self.in_time_placebo_w.T @ in_time_placebo_control_outcome_all.T
+        placebo_outcome = data.in_time_placebo_w.T @ in_time_placebo_control_outcome_all.T
 
         #Store relevant results as class attributes, for plotting and retrieval
-        self.placebo_treatment_period = placebo_treatment_period
-        self.placebo_periods_pre_treatment = periods_pre_treatment
-        self.in_time_placebo_outcome = placebo_outcome
+        data.placebo_treatment_period = placebo_treatment_period
+        data.placebo_periods_pre_treatment = periods_pre_treatment
+        data.in_time_placebo_outcome = placebo_outcome
 
+        #Update original data if DSC
+        if self.method == "DSC":
+            self._update_original_data('in-time')
 
     
     def predictor_table(self, 
@@ -315,7 +262,153 @@ class Inferences(object):
                                  donor_pool_label: self.control_covariates.mean(axis=1)},
                                 index=self.covariates)
         return table
+
+    def _normalize_placebos(self, placebo_outcomes):
+        '''
+        Takes array of synthetic placebo outcomes
+
+        returns array of same dimension where the control unit outcome has been subtracted from
+        the synthetic placebo
+        '''
+        data = self.original_data
+
+        #Initialize ratio list with treated unit
+        normalized_placebo_outcomes = []
+
+        #Add each control unit and respective synthetic control
+        for i in range(data.n_controls):
+            normalized_outcome = (placebo_outcomes[i] - data.control_outcome_all[:, i].T).T
+            normalized_placebo_outcomes.append(normalized_outcome)
+
+        return normalized_placebo_outcomes
+
+    def _pre_post_rmspe_ratios(self, placebo_outcomes):
+        '''
+        Computes the pre-post root mean square prediction error for all
+        in-place placebos and the treated units
+        '''
+        data = self.original_data
+
+        #Initialize ratio list with treated unit
+        post_ratio_list, pre_ratio_list = [], []
+
+        #Add treated unit
+        treated_post, treated_pre = self._pre_post_rmspe(data.synth_outcome.T, data.treated_outcome_all)
+        post_ratio_list.append(treated_post)
+        pre_ratio_list.append(treated_pre)
+
+
+        #Add each control unit and respective synthetic control
+        for i in range(data.n_controls):
+            post_ratio, pre_ratio = self._pre_post_rmspe(placebo_outcomes[i], data.control_outcome_all[:, i].T, placebo=True)
+            post_ratio_list.append(post_ratio)
+            pre_ratio_list.append(pre_ratio)
+
+        #Combine in Dataframe
+        rmspe_df = pd.DataFrame({"pre_rmspe": pre_ratio_list,
+                                "post_rmspe": post_ratio_list},
+                                columns=["pre_rmspe", "post_rmspe"])
+        #Compute post/pre rmspe ratio
+        rmspe_df["post/pre"] = rmspe_df["post_rmspe"] / rmspe_df["pre_rmspe"]
+        
+        #Return dataframe object
+        return rmspe_df
+
+
+    def _pre_post_rmspe(self, synth_outcome, treated_outcome, placebo=False):
+        '''
+        Input: Takes two outcome time series of the same dimensions
+
+        Returns:
+        post-treatment root mean square prediction error
+        and
+        pre-treatment root mean square prediction error
+        '''
+
+        t = self.original_data.periods_pre_treatment
+
+        if not placebo:
+            pre_treatment = np.sqrt(((treated_outcome[:t] - synth_outcome[:t]) ** 2).mean())
     
+            post_treatment = np.sqrt(((treated_outcome[t:] - synth_outcome[t:]) ** 2).mean())
+
+        else:
+            pre_treatment = np.sqrt(((treated_outcome[:t] - synth_outcome[0][:t]) ** 2).mean())
+    
+            post_treatment = np.sqrt(((treated_outcome[t:] - synth_outcome[0][t:]) ** 2).mean())
+
+
+        return post_treatment, pre_treatment
+
+    def _update_original_data(self, placebo):
+        '''
+        Used only in DiffSynth / DSC:
+
+        Called at the end of optimization procedure:
+
+        Transcribes relevant results from ModifiedData to OriginalData
+        '''
+        if not placebo:
+            self.original_data.w = self.modified_data.w
+            self.original_data.v = self.modified_data.v
+            self.original_data.synth_constant, self.original_data.synth_outcome = self._get_dsc_outcome(self.original_data.w,
+                                                                                                        self.original_data.control_outcome_all,
+                                                                                                        self.original_data.periods_pre_treatment,
+                                                                                                        self.original_data.treated_outcome)
+        elif placebo == 'in-space':
+            self.original_data.in_space_placebo_w = self.modified_data.in_space_placebo_w
+            self.original_data.pre_post_rmspe_ratio = self.modified_data.pre_post_rmspe_ratio 
+            self.original_data.in_space_placebos = self.modified_data.in_space_placebos
+
+        else: #Update in-time placebo
+            self.original_data.placebo_treatment_period = self.modified_data.placebo_treatment_period
+            self.original_data.placebo_periods_pre_treatment = self.modified_data.placebo_periods_pre_treatment
+            self.original_data.in_time_placebo_w = self.modified_data.in_time_placebo_w
+            _, self.original_data.in_time_placebo_outcome = self._get_dsc_outcome(self.original_data.in_time_placebo_w,
+                                                                                self.original_data.control_outcome_all,
+                                                                                self.original_data.placebo_periods_pre_treatment,
+                                                                                self.original_data.treated_outcome[:self.original_data.placebo_periods_pre_treatment])
+        return 
+
+    def _get_dsc_outcome(self, w, control_outcome, periods_pre_treatment, treated_pretreatment_outcome):
+        '''Method used only by DiffSynth (DSC)
+        
+        Arguments:
+
+          w: np.array
+            Weight matrix (n_controls x 1)
+
+          control_outcome: np.array
+            Outcome matrix for all control units for all time periods (n_controls x n_periods_all)
+          
+          periods_pre_treatment: int
+            Integer representing the number of periods before treatment
+
+          treated_pretreatment_outcome: np.array
+            Outcome matrix for treated unit (1 x n_periods_pre_treatment)
+
+        Approach:
+        1. Solve for the differenced synthetic control, less the constant
+        2. Solve for the constant by computing the average difference, in the pre-treatment period, 
+           between the treated unit and (1.)
+        3. Add the constant to all time periods in (1). This is the outcome of the differenced synthtic control.
+        '''
+        #1. Compute synthetic control outcome, less constant
+        synth_outcome =  w.T @ control_outcome.T
+        synth_outcome_pre_treatment = w.T @ control_outcome[:periods_pre_treatment].T
+
+        #2. Constant defined to be average difference between synth and treated unit in the pre-treatment period
+        constant = np.mean(treated_pretreatment_outcome - synth_outcome_pre_treatment)
+
+        #3. Add constant to synthetic control outcome
+        synth_outcome += constant
+
+        return constant, synth_outcome
+    
+    ##########################################################
+    ## ALTERNATE OPTIMIZATION METHODS -- NOT CURRENTLY USED ##
+    ##########################################################
+
     def diffevo_optimize(self):
         '''Uses the differential evolution optimizer from scipy to solve for synthetic control'''
         bounds = [(0,1) for _ in range(self.n_covariates)]
@@ -361,8 +454,3 @@ class Inferences(object):
         #Store, print, return best solutions
         self.w = best_w
         return best_w, min_loss
-
-    def add_constant(self):
-        '''Method used only by Synthetic Diff-in-Diff'''
-        constant = np.mean(self.treated_outcome - self.control_outcome @ self.w)
-        self.control_outcome_all += constant
