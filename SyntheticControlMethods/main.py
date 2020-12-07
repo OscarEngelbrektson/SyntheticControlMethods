@@ -224,7 +224,7 @@ class DataProcessor(object):
     
 class Synth(Inferences, Plot, DataProcessor):
 
-    def __init__(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs):
+    def __init__(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, n_optim=10, **kwargs):
         self.method = "SC"
 
         original_checked_input = self._process_input_data(
@@ -235,17 +235,13 @@ class Synth(Inferences, Plot, DataProcessor):
         #Get synthetic Control
         self.optimize(self.original_data.treated_outcome, self.original_data.treated_covariates,
                     self.original_data.control_outcome, self.original_data.control_covariates, 
-                    self.original_data, False, 8)
+                    self.original_data, False, n_optim)
         
-        #Visualize synthetic control
-        self.plot(["original", "pointwise", "cumulative"],
-                    (15, 12),
-                    self.original_data.treated_unit)
 
 class DiffSynth(Inferences, Plot, DataProcessor):
 
     def __init__(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, 
-                not_diff_cols=None, **kwargs):
+                n_optim=10, not_diff_cols=None, **kwargs):
         self.method = "DSC"
 
         #Process original data - will be used in plotting
@@ -266,13 +262,7 @@ class DiffSynth(Inferences, Plot, DataProcessor):
         #Get synthetic Control
         self.optimize(self.modified_data.treated_outcome, self.modified_data.treated_covariates,
                     self.modified_data.control_outcome, self.modified_data.control_covariates, 
-                    self.modified_data, False, 1)
-        '''
-        #Visualize synthetic control
-        self.plot(["original", "pointwise", "cumulative"],
-                    (15, 12),
-                    self.original_data.treated_unit)
-        '''
+                    self.modified_data, False, n_optim)
 
     def difference_data(self, dataset, not_diff_cols):
         '''
