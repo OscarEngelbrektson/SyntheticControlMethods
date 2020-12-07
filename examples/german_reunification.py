@@ -1,6 +1,7 @@
 #Import packages
 import pandas as pd
 import numpy as np
+
 from SyntheticControlMethods import Synth, DiffSynth
 
 #Import data
@@ -22,7 +23,7 @@ synth.plot(['in-time placebo'],
             treated_label="West Germany",
             synth_label="Synthetic West Germany")
 
-#In-space related placebos
+#Compute in-space placebos
 synth.in_space_placebo()
 
 #Visualize
