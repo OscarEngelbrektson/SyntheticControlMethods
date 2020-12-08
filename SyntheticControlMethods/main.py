@@ -288,7 +288,7 @@ class DiffSynth(Inferences, Plot, DataProcessor):
         data = self.original_data
 
         #Binary flag for whether there are columns to ignore
-        ignore_some_cols = not_diff_cols == None
+        ignore_all_cols = not_diff_cols == None
 
         #Compute difference of outcome variable
         modified_dataset[data.outcome_var] = modified_dataset.groupby(data.id)[data.outcome_var].apply(lambda unit: unit.interpolate(method='linear', limit_direction="both")).diff()
@@ -299,7 +299,7 @@ class DiffSynth(Inferences, Plot, DataProcessor):
             modified_dataset[col] = modified_dataset.groupby(data.id)[col].apply(lambda unit: unit.interpolate(method='linear', limit_direction="both"))
             
             #Compute change from previous period
-            if ignore_some_cols is not None:
+            if not ignore_all_cols:
                 if col not in not_diff_cols:
                     modified_dataset[col].diff()
 
