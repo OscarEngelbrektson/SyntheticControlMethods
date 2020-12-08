@@ -9,7 +9,9 @@ data = pd.read_csv("examples/datasets/german_reunification.csv")
 data = data.drop(columns="code", axis=1)
 
 #Fit Differenced Synthetic Control
-synth = DiffSynth(data, "gdp", "country", "year", 1990, "West Germany", not_diff_cols=["schooling", "invest60", "invest70", "invest80"])
+synth = DiffSynth(data, "gdp", "country", "year", 1990, "West Germany", not_diff_cols=["schooling", "invest60", "invest70", "invest80"], n_optim=1)
+
+synth.original_data.rmspe_df.to_csv("rmspe_df.csv")
 
 #Fit 
 synth.plot(["original", "pointwise", "cumulative"], treated_label="West Germany", 

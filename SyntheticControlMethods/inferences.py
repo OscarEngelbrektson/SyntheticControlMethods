@@ -283,7 +283,7 @@ class Inferences(object):
 
         return normalized_placebo_outcomes
 
-    def _pre_post_rmspe_ratios(self, placebo_outcomes):
+    def _pre_post_rmspe_ratios(self, placebo_outcomes, placebo=True):
         '''
         Computes the pre-post root mean square prediction error for all
         in-place placebos and the treated units
@@ -294,27 +294,42 @@ class Inferences(object):
         post_ratio_list, pre_ratio_list = [], []
 
         #Add treated unit
-        treated_post, treated_pre = self._pre_post_rmspe(data.synth_outcome.T, data.treated_outcome_all)
-        post_ratio_list.append(treated_post)
-        pre_ratio_list.append(treated_pre)
+        if not placebo:
+            #Compute rmspe
+            treated_post, treated_pre = self._pre_post_rmspe(data.synth_outcome.T, data.treated_outcome_all)
+            post_ratio_list.append(treated_post)
+            pre_ratio_list.append(treated_pre)
 
+            #Store in dataframe
+            rmspe_df = pd.DataFrame({"pre_rmspe": pre_ratio_list,
+                                    "post_rmspe": post_ratio_list},
+                                    columns=["pre_rmspe", "post_rmspe"])
+            #Compute post/pre rmspe ratio
+            rmspe_df["post/pre"] = rmspe_df["post_rmspe"] / rmspe_df["pre_rmspe"]
 
-        #Add each control unit and respective synthetic control
-        for i in range(data.n_controls):
-            post_ratio, pre_ratio = self._pre_post_rmspe(placebo_outcomes[i], data.control_outcome_all[:, i].T, placebo=True)
-            post_ratio_list.append(post_ratio)
-            pre_ratio_list.append(pre_ratio)
+            data.rmspe_df = rmspe_df
+            return
+            
 
-        #Combine in Dataframe
-        rmspe_df = pd.DataFrame({"pre_rmspe": pre_ratio_list,
-                                "post_rmspe": post_ratio_list},
-                                columns=["pre_rmspe", "post_rmspe"])
-        #Compute post/pre rmspe ratio
-        rmspe_df["post/pre"] = rmspe_df["post_rmspe"] / rmspe_df["pre_rmspe"]
-        
-        #Return dataframe object
-        return rmspe_df
+        else: #if placebo
+            #Add each control unit and respective synthetic control
+            for i in range(data.n_controls):
+                post_ratio, pre_ratio = self._pre_post_rmspe(placebo_outcomes[i], data.control_outcome_all[:, i].T, placebo=True)
+                post_ratio_list.append(post_ratio)
+                pre_ratio_list.append(pre_ratio)
 
+            #Store in dataframe
+            rmspe_df = pd.DataFrame({"pre_rmspe": pre_ratio_list,
+                                    "post_rmspe": post_ratio_list},
+                                    columns=["pre_rmspe", "post_rmspe"])
+            
+            #Compute post/pre rmspe ratio
+            rmspe_df["post/pre"] = rmspe_df["post_rmspe"] / rmspe_df["pre_rmspe"]
+            
+            #Extend self.original_data.rmspe_df and return
+            data.rmspe_df = pd.concat([data.rmspe_df, rmspe_df], axis=0)
+            return
+             
 
     def _pre_post_rmspe(self, synth_outcome, treated_outcome, placebo=False):
         '''

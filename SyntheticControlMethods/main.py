@@ -113,6 +113,8 @@ class SynthBase(object):
         self.synth_outcome = None
         self.synth_constant = None
         self.synth_covariates = None
+        self.rmspe_df = None
+        #used in optimization
         self.min_loss = float("inf")
         self.fail_count = 0 #Used to limit number of optimization attempts
 
@@ -237,6 +239,9 @@ class Synth(Inferences, Plot, DataProcessor):
                     self.original_data.control_outcome, self.original_data.control_covariates, 
                     self.original_data, False, n_optim)
         
+        #Compute rmspe_df
+        self._pre_post_rmspe_ratios(None, False)
+        
 
 class DiffSynth(Inferences, Plot, DataProcessor):
 
@@ -249,7 +254,6 @@ class DiffSynth(Inferences, Plot, DataProcessor):
             dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs
         )
         self.original_data = SynthBase(**original_checked_input)
-        self.original_data.dataset.to_csv("original_data.csv", index=False, header=True)
 
         #Process differenced data - will be used in inference
         modified_dataset = self.difference_data(dataset, not_diff_cols)
@@ -257,12 +261,14 @@ class DiffSynth(Inferences, Plot, DataProcessor):
             modified_dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs
         )
         self.modified_data = SynthBase(**modified_checked_input)
-        self.original_data.dataset.to_csv("second_original_data.csv", index=False, header=True)
 
         #Get synthetic Control
         self.optimize(self.modified_data.treated_outcome, self.modified_data.treated_covariates,
                     self.modified_data.control_outcome, self.modified_data.control_covariates, 
                     self.modified_data, False, n_optim)
+        
+        #Compute rmspe_df
+        self._pre_post_rmspe_ratios(None, False)
 
     def difference_data(self, dataset, not_diff_cols):
         '''
