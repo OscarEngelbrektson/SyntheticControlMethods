@@ -95,7 +95,7 @@ class Plot(object):
         plt = self._get_plotter()
         fig = plt.figure(figsize=figsize)
         valid_panels = ['original', 'pointwise', 'cumulative', 
-                        'in-space placebo', 'pre/post rmspe', 'in-time placebo']
+                        'in-space placebo', 'rmspe ratio', 'in-time placebo']
         solo_panels = ['pre/post rmspe'] #plots with different axes
         for panel in panels:
             if panel not in valid_panels:
@@ -224,18 +224,18 @@ class Plot(object):
                 plt.setp(ax.get_xticklabels(), visible=False)
             idx += 1
 
-        if 'pre/post rmspe' in panels:
-            #assert self.pre_post_rmspe_ratio != None, "Must run in_space_placebo() before you can plot!"
+        if 'rmspe ratio' in panels:
+            assert data.rmspe_df.shape[0] != 1, "Must run in_space_placebo() before you can plot 'rmspe ratio'!"
             
             ax = plt.subplot(n_panels, 1, idx)
             
             ax.set_title("Pre/post treatment root mean square prediction error")
     
-            ax.hist(data.pre_post_rmspe_ratio["post/pre"], bins=int(max(data.pre_post_rmspe_ratio["post/pre"])), 
+            ax.hist(data.rmspe_df["post/pre"], bins=int(max(data.rmspe_df["post/pre"])), 
                     color="#3F5D7D", histtype='bar', ec='black')
             
             ax.annotate(data.treated_unit,
-                xy=(data.pre_post_rmspe_ratio["post/pre"][0]-0.5, 1),
+                xy=(data.rmspe_df["post/pre"][0]-0.5, 1),
                 xycoords='data',
                 xytext=(-100, 80),
                 textcoords='offset points',
