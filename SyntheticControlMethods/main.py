@@ -227,6 +227,39 @@ class DataProcessor(object):
 class Synth(Inferences, Plot, DataProcessor):
 
     def __init__(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, n_optim=10, **kwargs):
+        '''
+        data: 
+          Type: Pandas dataframe. 
+          A pandas dataframe containing the dataset. Each row should contain one observation for a unit at a time, 
+          including the outcome and covariates. Dataset should be ordered by unit then time.
+
+        outcome_var: 
+          Type: str. 
+          Name of outcome column in data, e.g. "gdp"
+
+        id_var: 
+          Type: str. 
+          Name of unit indicator column in data, e.g. "country"
+
+        time_var: 
+          Type: str. 
+          Name of time column in data, e.g. "year"
+
+        treatment_period: 
+          Type: int. 
+          Time of first observation after the treatment took place, i.e. first observation affected by the treatment effect.
+          E.g. 1990 for german reunification.
+
+        treated_unit: 
+          Type: str. 
+          Name of the unit that recieved treatment, e.g. "West Germany"
+          data["id_var"] == treated_unit
+
+        n_optim: 
+          Type: int. Default: 10. 
+          Number of different initialization values for which the optimization is run. 
+          Higher number means longer runtime, but a higher chance of a globally optimal solution.
+        '''
         self.method = "SC"
 
         original_checked_input = self._process_input_data(
@@ -247,6 +280,45 @@ class DiffSynth(Inferences, Plot, DataProcessor):
 
     def __init__(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, 
                 n_optim=10, not_diff_cols=None, **kwargs):
+        '''
+        data: 
+          Type: Pandas dataframe. 
+          A pandas dataframe containing the dataset. Each row should contain one observation for a unit at a time, 
+          including the outcome and covariates. Dataset should be ordered by unit then time.
+
+        outcome_var: 
+          Type: str. 
+          Name of outcome column in data, e.g. "gdp"
+
+        id_var: 
+          Type: str. 
+          Name of unit indicator column in data, e.g. "country"
+
+        time_var: 
+          Type: str. 
+          Name of time column in data, e.g. "year"
+
+        treatment_period: 
+          Type: int. 
+          Time of first observation after the treatment took place, i.e. first observation affected by the treatment effect.
+          E.g. 1990 for german reunification.
+
+        treated_unit: 
+          Type: str. 
+          Name of the unit that recieved treatment, e.g. "West Germany"
+          data["id_var"] == treated_unit
+
+        n_optim: 
+          Type: int. Default: 10. 
+          Number of different initialization values for which the optimization is run. 
+          Higher number means longer runtime, but a higher chance of a globally optimal solution.
+
+        not_diff_cols:
+            Type: list. Default: [].
+            List of column names to omit from pre-processing, e.g. compute the first difference for. 
+            Typically, columns should be included if the proportion of missing values is high.
+            This is because the first difference is only defined for two consecutive values.
+        '''
         self.method = "DSC"
 
         #Process original data - will be used in plotting
@@ -267,7 +339,7 @@ class DiffSynth(Inferences, Plot, DataProcessor):
                     self.modified_data.control_outcome, self.modified_data.control_covariates, 
                     self.modified_data, False, n_optim)
         
-        #Compute rmspe_df
+        #Compute rmspe_df for treated unit Synthetic Control
         self._pre_post_rmspe_ratios(None, False)
 
     def difference_data(self, dataset, not_diff_cols):
