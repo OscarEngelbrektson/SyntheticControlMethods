@@ -1,5 +1,5 @@
 # Synthetic Control
-
+Currently, the package implements both the Synthetic Control method and the Differenced Synthetic Control method.
 
 
 ## A Python package for causal inference using synthetic controls
@@ -11,8 +11,8 @@ As with all approaches to causal inference on non-experimental data, valid concl
 
      pip install SyntheticControlMethods
 
-## Example
-In this simple example, we replicate [Abadie, Diamond and Hainmueller (2015)](http://github.com) which estimates the economic impact of the 1990 German reunification on West Germany using the synthetic control method.
+## Usage
+In this simple example, we replicate [Abadie, Diamond and Hainmueller (2015)](http://github.com) which estimates the economic impact of the 1990 German reunification on West Germany using the synthetic control method. Here is [complete example with explanations](https://github.com/OscarEngelbrektson/SyntheticControlMethods/blob/master/examples/german_reunification.ipynb).
 
 ```python
 #Import packages
@@ -24,27 +24,16 @@ data = pd.read_csv("examples/german_reunification.csv")
 data = data.drop(columns="code", axis=1)
 
 #Fit Synthetic Control
-synth = Synth(data, "gdp", "country", "year", 1990, "West Germany")
+sc = Synth(data, "gdp", "country", "year", 1990, "West Germany")
+
+#Visualize synthetic control
+sc.plot(["original", "pointwise", "cumulative"], treated_label="West Germany", 
+            synth_label="Synthetic West Germany", treatment_label="German Reunification"))
 ```
 
 ![Synthetic Control for German Reunification](https://github.com/OscarEngelbrektson/SyntheticControlMethods/blob/master/examples/images/german_reunification_full_effect_panel.png?raw=true)
 
-The plot contains three panels. The first panel shows the data and a counterfactual prediction for the post-treatment period. The second panel shows the difference between observed data and counterfactual predictions. This is the *pointwise* causal effect, as estimated by the model. The third panel adds up
-the pointwise contributions from the second panel, resulting in a plot of the *cumulative* effect of the intervention.
-
-```python
-#Run validity tests
-synth.in_time_placebo(1976) #Placebo treatment period is 1976, 6 years before german reunification
-synth.in_space_placebo()
-
-#Visualize validity tests
-synth.plot(['in-space placebo', 'pre/post rmspe', 'in-time placebo'], 
-            in_space_exclusion_multiple=10, #exclude units with more than 10x the pre-treatment error of the treated unit
-            treated_label="West Germany",
-            synth_label="Synthetic West Germany")
-```
-
-![Synthetic Control for German Reunification](https://github.com/OscarEngelbrektson/SyntheticControlMethods/blob/master/examples/images/german_reunification_full_validity_test_panel.png?raw=true)
+The plot contains three panels. The first panel shows the data and a counterfactual prediction for the post-treatment period. The second panel shows the difference between observed data and counterfactual predictions. This is the pointwise causal effect, as estimated by the model. The third panel adds up the pointwise contributions from the second panel, resulting in a plot of the cumulative effect of the intervention.
 
 # More background on the theory that underlies the Synthetic Control
 
