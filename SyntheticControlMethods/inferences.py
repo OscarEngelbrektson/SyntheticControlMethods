@@ -130,7 +130,7 @@ class Inferences(object):
         return loss
 
 
-    def in_space_placebo(self):
+    def in_space_placebo(self, n_optim=3):
         '''
         Fits a synthetic control to each of the control units, 
         using the remaining control units as control group
@@ -162,7 +162,7 @@ class Inferences(object):
                             control_placebo_outcome[:data.periods_pre_treatment], 
                             control_placebo_covariates,
                             data,
-                            "in-space", 3)
+                            "in-space", n_optim)
             
             #Compute outcome of best synthetic control
             if self.method == "SC":
@@ -186,7 +186,7 @@ class Inferences(object):
 
         return
 
-    def in_time_placebo(self, placebo_treatment_period):
+    def in_time_placebo(self, placebo_treatment_period, n_optim=5):
         '''
         Fits a synthetic control to the treated unit,
         with a pre-treatment period shorter than the true pre-treatment period,
@@ -220,7 +220,7 @@ class Inferences(object):
         self.optimize(in_time_placebo_treated_outcome, in_time_placebo_treated_covariates,
                         in_time_placebo_control_outcome, in_time_placebo_control_covariates,
                         data,
-                        "in-time", 5)
+                        "in-time", n_optim)
         #Compute placebo outcomes using placebo_w vector from optimize
         placebo_outcome = data.in_time_placebo_w.T @ in_time_placebo_control_outcome_all.T
 
