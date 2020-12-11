@@ -96,7 +96,7 @@ class Plot(object):
         fig = plt.figure(figsize=figsize)
         valid_panels = ['original', 'pointwise', 'cumulative', 
                         'in-space placebo', 'rmspe ratio', 'in-time placebo']
-        solo_panels = ['pre/post rmspe'] #plots with different axes
+        solo_panels = ['rmspe ratio'] #plots with different axes
         for panel in panels:
             if panel not in valid_panels:
                 raise ValueError(
@@ -225,24 +225,24 @@ class Plot(object):
             idx += 1
 
         if 'rmspe ratio' in panels:
-            assert data.rmspe_df.shape[0] != 1, "Must run in_space_placebo() before you can plot 'rmspe ratio'!"
+            #assert data.rmspe_df.shape[0] != 1, "Must run in_space_placebo() before you can plot 'rmspe ratio'!"
             
             ax = plt.subplot(n_panels, 1, idx)
             
-            ax.set_title("Pre/post treatment root mean square prediction error")
+            ax.set_title("post treatment root mean square prediction error")
     
             ax.hist(data.rmspe_df["post/pre"], bins=int(max(data.rmspe_df["post/pre"])), 
                     color="#3F5D7D", histtype='bar', ec='black')
             
-            ax.annotate(data.treated_unit,
-                xy=(data.rmspe_df["post/pre"][0]-0.5, 1),
+            ax.annotate(treated_label,
+                xy=(data.rmspe_df["post/pre"].iloc[0]-0.5, 1),
                 xycoords='data',
                 xytext=(-100, 80),
                 textcoords='offset points',
                 arrowprops=dict(arrowstyle="->"))
             
             ax.set_ylabel("Frequency")
-            ax.set_xlabel("Ratio")
+            ax.set_xlabel("Postperiod RMSPE / Preperiod RMSPE")
             if idx != n_panels:
                 plt.setp(ax.get_xticklabels(), visible=False)
             idx += 1
