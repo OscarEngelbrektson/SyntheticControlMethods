@@ -137,7 +137,7 @@ class DataProcessor(object):
         These are all the data matrices.
         '''
         #All columns not y, id or time must be predictors
-        covariates = [col for col in dataset.columns if col not in [outcome_var, id_var, time_var]]
+        covariates = [col for col in dataset.columns if col not in [id_var, time_var]]
 
         #Extract quantities needed for pre-processing matrices
         #Get number of periods in pre-treatment and total

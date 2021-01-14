@@ -200,7 +200,7 @@ class Plot(object):
                 #If the pre rmspe is not more than
                 #in_space_exclusion_multiple times larger than synth pre rmspe
                 if in_space_exclusion_multiple is not None:
-                  if data.pre_post_rmspe_ratio["pre_rmspe"][i] < in_space_exclusion_multiple*data.pre_post_rmspe_ratio["pre_rmspe"][0]:
+                  if data.rmspe_df["pre_rmspe"].iloc[i] < in_space_exclusion_multiple*data.rmspe_df["pre_rmspe"].iloc[0]:
                       ax.plot(time, data.in_space_placebos[i], ('0.7'))
                 else:
                   ax.plot(time, data.in_space_placebos[i], ('0.7'))

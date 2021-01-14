@@ -11,11 +11,10 @@ data = data.drop(columns="code", axis=1)
 #Fit Differenced Synthetic Control
 synth = DiffSynth(data, "gdp", "country", "year", 1990, "West Germany", not_diff_cols=["schooling", "invest60", "invest70", "invest80"], n_optim=1)
 
-synth.original_data.rmspe_df.to_csv("rmspe_df.csv")
-
 #Fit 
 synth.plot(["original", "pointwise", "cumulative"], treated_label="West Germany", 
             synth_label="Synthetic West Germany", treatment_label="German Reunification")
+
 
 #In-time placebo
 #Placebo treatment period is 1982, 8 years earlier
@@ -28,8 +27,10 @@ synth.plot(['in-time placebo'],
 #Compute in-space placebos
 synth.in_space_placebo()
 
+synth.original_data.rmspe_df.to_csv("rmspe_df.csv")
+
 #Visualize
-synth.plot(['in-space placebo'], in_space_exclusion_multiple=5, treated_label="West Germany",
+synth.plot(['rmspe ratio'], in_space_exclusion_multiple=5, treated_label="West Germany",
             synth_label="Synthetic West Germany")
-synth.plot(['pre/post rmspe'], in_space_exclusion_multiple=5, treated_label="West Germany",
+synth.plot(['in-space placebo'], in_space_exclusion_multiple=5, treated_label="West Germany",
             synth_label="Synthetic West Germany")

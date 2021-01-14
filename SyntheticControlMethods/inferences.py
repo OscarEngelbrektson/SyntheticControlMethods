@@ -327,7 +327,8 @@ class Inferences(object):
             rmspe_df["post/pre"] = rmspe_df["post_rmspe"] / rmspe_df["pre_rmspe"]
             
             #Extend self.original_data.rmspe_df and return
-            data.rmspe_df = pd.concat([data.rmspe_df, rmspe_df], axis=0)
+            rmspe_df = pd.concat([data.rmspe_df, rmspe_df], axis=0)
+            data.rmspe_df = rmspe_df.reset_index(drop=True)
             return
              
 
