@@ -9,7 +9,7 @@ install_requires = [
         'numpy',
         'scipy==1.4.1',
         'pandas',
-        'cvxpy==1.1.4',
+        'cvxpy',
         'matplotlib>=2.2.3',
         'jinja2>=2.10'
     ]
