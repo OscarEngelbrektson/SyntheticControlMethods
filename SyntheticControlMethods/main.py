@@ -128,7 +128,6 @@ class SynthBase(object):
         self.placebo_treatment_period = None
         self.placebo_periods_pre_treatment = None
 
-
 class DataProcessor(object):
     
     def _process_input_data(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs):
@@ -160,6 +159,11 @@ class DataProcessor(object):
             treatment_period, treated_unit, n_controls, 
             periods_all, periods_pre_treatment, covariates
         )
+        
+        #Rescale covariates to be unit variance (helps with optimization)
+        treated_covariates, control_covariates = self._rescale_covariate_variance(treated_covariates,
+                                                                            control_covariates,
+                                                                            n_covariates)
 
         return {
             'dataset': dataset,
@@ -223,6 +227,22 @@ class DataProcessor(object):
                 set_index(np.arange(len(control_data[covariates])) // periods_pre_treatment).mean(level=0)).T
 
         return control_outcome_all, control_outcome, control_covariates
+
+    def _rescale_covariate_variance(self, treated_covariates, control_covariates, n_covariates):
+        '''Rescale covariates to be unit variance'''
+
+        #Combine control and treated into one big dataframe, over which we will compute variance for each covariate
+        big_dataframe = np.concatenate((treated_covariates, control_covariates), axis=1)
+
+        #Rescale each covariate to have unit variance
+        big_dataframe /= np.apply_along_axis(np.std, 0, big_dataframe)
+
+        #Re-seperate treated and control from big dataframe
+        treated_covariates = big_dataframe[:,0].reshape(1, n_covariates) #First column is treated unit
+        control_covariates = big_dataframe[:,1:] #All other columns are control units
+
+        #Return covariate matices with unit variance
+        return treated_covariates, control_covariates
     
 class Synth(Inferences, Plot, DataProcessor):
 
@@ -274,7 +294,6 @@ class Synth(Inferences, Plot, DataProcessor):
         
         #Compute rmspe_df
         self._pre_post_rmspe_ratios(None, False)
-        
 
 class DiffSynth(Inferences, Plot, DataProcessor):
 
@@ -321,7 +340,7 @@ class DiffSynth(Inferences, Plot, DataProcessor):
         '''
         self.method = "DSC"
 
-        #Process original data - will be used in plotting
+        #Process original data - will be used in plotting and summary
         original_checked_input = self._process_input_data(
             dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs
         )
