@@ -5,32 +5,33 @@ import numpy as np
 from SyntheticControlMethods import Synth, DiffSynth
 
 #Import data
-data = pd.read_csv("examples/datasets/german_reunification.csv")
+data_dir = "https://raw.githubusercontent.com/OscarEngelbrektson/SyntheticControlMethods/master/examples/datasets/"
+data = pd.read_csv(data_dir + "german_reunification" + ".csv")
 data = data.drop(columns="code", axis=1)
 
 #Fit Differenced Synthetic Control
-synth = DiffSynth(data, "gdp", "country", "year", 1990, "West Germany", not_diff_cols=["schooling", "invest60", "invest70", "invest80"], n_optim=1)
+sc = Synth(data, "gdp", "country", "year", 1990, "West Germany", not_diff_cols=["schooling", "invest60", "invest70", "invest80"], n_optim=5)
 
 #Fit 
-synth.plot(["original", "pointwise", "cumulative"], treated_label="West Germany", 
+sc.plot(["original", "pointwise", "cumulative"], treated_label="West Germany", 
             synth_label="Synthetic West Germany", treatment_label="German Reunification")
 
 
 #In-time placebo
 #Placebo treatment period is 1982, 8 years earlier
-synth.in_time_placebo(1982)
+sc.in_time_placebo(1982)
 #Visualize
-synth.plot(['in-time placebo'], 
+sc.plot(['in-time placebo'], 
             treated_label="West Germany",
             synth_label="Synthetic West Germany")
 
 #Compute in-space placebos
-synth.in_space_placebo()
+sc.in_space_placebo()
 
-synth.original_data.rmspe_df.to_csv("rmspe_df.csv")
+sc.original_data.rmspe_df.to_csv("rmspe_df.csv")
 
 #Visualize
-synth.plot(['rmspe ratio'], in_space_exclusion_multiple=5, treated_label="West Germany",
+sc.plot(['rmspe ratio'], in_space_exclusion_multiple=5, treated_label="West Germany",
             synth_label="Synthetic West Germany")
-synth.plot(['in-space placebo'], in_space_exclusion_multiple=5, treated_label="West Germany",
+sc.plot(['in-space placebo'], in_space_exclusion_multiple=5, treated_label="West Germany",
             synth_label="Synthetic West Germany")
