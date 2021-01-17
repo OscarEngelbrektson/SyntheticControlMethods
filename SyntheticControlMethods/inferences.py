@@ -46,7 +46,8 @@ class Inferences(object):
         for step in range(steps):
 
             #Dirichlet distribution returns a valid pmf over n_covariates states
-            v_0 = np.random.dirichlet(np.ones(data.n_covariates), size=1)
+            #v_0 = np.random.dirichlet(np.ones(data.n_covariates), size=1)
+            v_0 = np.full(data.n_covariates, 1/data.n_covariates)
 
             #Required to have non negative values
             bnds = tuple((0,1) for _ in range(data.n_covariates))
@@ -301,9 +302,10 @@ class Inferences(object):
             pre_ratio_list.append(treated_pre)
 
             #Store in dataframe
-            rmspe_df = pd.DataFrame({"pre_rmspe": pre_ratio_list,
+            rmspe_df = pd.DataFrame({"unit": data.treated_unit,
+                                    "pre_rmspe": pre_ratio_list,
                                     "post_rmspe": post_ratio_list},
-                                    columns=["pre_rmspe", "post_rmspe"])
+                                    columns=["unit", "pre_rmspe", "post_rmspe"])
             #Compute post/pre rmspe ratio
             rmspe_df["post/pre"] = rmspe_df["post_rmspe"] / rmspe_df["pre_rmspe"]
 
@@ -319,9 +321,10 @@ class Inferences(object):
                 pre_ratio_list.append(pre_ratio)
 
             #Store in dataframe
-            rmspe_df = pd.DataFrame({"pre_rmspe": pre_ratio_list,
+            rmspe_df = pd.DataFrame({"unit":  data.control_units,
+                                    "pre_rmspe": pre_ratio_list,
                                     "post_rmspe": post_ratio_list},
-                                    columns=["pre_rmspe", "post_rmspe"])
+                                    columns=["unit", "pre_rmspe", "post_rmspe"])
             
             #Compute post/pre rmspe ratio
             rmspe_df["post/pre"] = rmspe_df["post_rmspe"] / rmspe_df["pre_rmspe"]

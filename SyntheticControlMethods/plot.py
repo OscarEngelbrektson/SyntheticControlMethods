@@ -208,15 +208,6 @@ class Plot(object):
             ax.axvline(data.treatment_period-1, linestyle=':', color="gray")
             ax.plot(time, normalized_treated_outcome, 'b-', label=treated_label)
 
-            #ax.set_ylim(-1.1*most_extreme_value, 1.1*most_extreme_value)
-            '''
-            ax.annotate(treatment_label,
-                xy=(self.treatment_period-1, self.treated_outcome[-1]*1.2),
-                xycoords='data',
-                xytext=(-160, -4),
-                textcoords='offset points',
-                arrowprops=dict(arrowstyle="->"))
-            '''
             ax.set_ylabel(data.outcome_var)
             ax.set_xlabel(data.time)
             ax.legend()
@@ -225,24 +216,21 @@ class Plot(object):
             idx += 1
 
         if 'rmspe ratio' in panels:
-            #assert data.rmspe_df.shape[0] != 1, "Must run in_space_placebo() before you can plot 'rmspe ratio'!"
-            
+            assert data.rmspe_df.shape[0] != 1, "Must run in_space_placebo() before you can plot 'rmspe ratio'!"
+
             ax = plt.subplot(n_panels, 1, idx)
+        
+            #Create horizontal barplot, one bar per unit
+            y_pos = np.arange(data.n_controls+1) #Number of units
+            ax.barh(y_pos, data.rmspe_df["post/pre"], color="#3F5D7D",  ec='black')
             
-            ax.set_title("post treatment root mean square prediction error")
-    
-            ax.hist(data.rmspe_df["post/pre"], bins=int(max(data.rmspe_df["post/pre"])), 
-                    color="#3F5D7D", histtype='bar', ec='black')
-            
-            ax.annotate(treated_label,
-                xy=(data.rmspe_df["post/pre"].iloc[0]-0.5, 1),
-                xycoords='data',
-                xytext=(-100, 80),
-                textcoords='offset points',
-                arrowprops=dict(arrowstyle="->"))
-            
-            ax.set_ylabel("Frequency")
+            #Label bars with unit names
+            ax.set_yticks(y_pos)
+            ax.set_yticklabels(data.rmspe_df["unit"])
+
+            #Label x-axis
             ax.set_xlabel("Postperiod RMSPE / Preperiod RMSPE")
+
             if idx != n_panels:
                 plt.setp(ax.get_xticklabels(), visible=False)
             idx += 1

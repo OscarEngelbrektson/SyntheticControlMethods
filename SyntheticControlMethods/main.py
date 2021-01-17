@@ -21,7 +21,7 @@ from SyntheticControlMethods.inferences import Inferences
 
 class SynthBase(object):
     
-    def __init__(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, 
+    def __init__(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, control_units,
                 covariates, periods_all, periods_pre_treatment, n_controls, n_covariates,
                 treated_outcome, control_outcome, treated_covariates, control_covariates,
                 treated_outcome_all, control_outcome_all,
@@ -54,6 +54,7 @@ class SynthBase(object):
         self.time = time_var
         self.treatment_period = treatment_period
         self.treated_unit = treated_unit
+        self.control_units = control_units
         self.covariates = covariates
         self.periods_all = periods_all
         self.periods_pre_treatment = periods_pre_treatment
@@ -108,6 +109,7 @@ class SynthBase(object):
 
         ###Post inference quantities
         self.w = w #Can be provided if using Synthetic DID
+        self.weight_df = None
         self.v = None
         self.treatment_effect = treatment_effect #If known
         self.synth_outcome = None
@@ -146,6 +148,9 @@ class DataProcessor(object):
         n_controls = dataset[id_var].nunique() - 1
         n_covariates = len(covariates)
 
+        #All units that are not the treated unit are controls
+        control_units = dataset.loc[dataset[id_var] != treated_unit][id_var].unique()
+
         ###Get treated unit matrices first###
         treated_outcome_all, treated_outcome, treated_covariates = self._process_treated_data(
             dataset, outcome_var, id_var, time_var, 
@@ -172,6 +177,7 @@ class DataProcessor(object):
             'time_var':time_var,
             'treatment_period':treatment_period,
             'treated_unit':treated_unit,
+            'control_units':control_units,
             'covariates':covariates,
             'periods_all':periods_all,
             'periods_pre_treatment':periods_pre_treatment,
@@ -295,6 +301,10 @@ class Synth(Inferences, Plot, DataProcessor):
         #Compute rmspe_df
         self._pre_post_rmspe_ratios(None, False)
 
+        #Prepare weight_df with unit weights
+        self.original_data.weight_df = pd.DataFrame({"Unit":self.original_data.control_units,
+                                        "Weight":self.original_data.w.T[0]})
+
 class DiffSynth(Inferences, Plot, DataProcessor):
 
     def __init__(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, 
@@ -360,6 +370,10 @@ class DiffSynth(Inferences, Plot, DataProcessor):
         
         #Compute rmspe_df for treated unit Synthetic Control
         self._pre_post_rmspe_ratios(None, False)
+
+        #Prepare weight_df with unit weights
+        self.weights_df = pd.DataFrame({"Unit":self.original_data.control_units,
+                                        "Weight":self.original_data.w.T[0]})
 
     def difference_data(self, dataset, not_diff_cols):
         '''
