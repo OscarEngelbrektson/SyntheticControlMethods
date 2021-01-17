@@ -45,9 +45,14 @@ class Inferences(object):
         
         for step in range(steps):
 
-            #Dirichlet distribution returns a valid pmf over n_covariates states
-            #v_0 = np.random.dirichlet(np.ones(data.n_covariates), size=1)
-            v_0 = np.full(data.n_covariates, 1/data.n_covariates)
+            #Approach for selecting initial v matrix:
+            #First time, try a uniform v matrix, assigning equal weight to all covariates
+            #Subsequent times, sample a random pmf using the dirichlet distribution
+            if step == 0:
+                v_0 = np.full(data.n_covariates, 1/data.n_covariates)
+            else:
+                #Dirichlet distribution returns a valid pmf over n_covariates states
+                v_0 = np.random.dirichlet(np.ones(data.n_covariates), size=1)            
 
             #Required to have non negative values
             bnds = tuple((0,1) for _ in range(data.n_covariates))
@@ -306,9 +311,11 @@ class Inferences(object):
                                     "pre_rmspe": pre_ratio_list,
                                     "post_rmspe": post_ratio_list},
                                     columns=["unit", "pre_rmspe", "post_rmspe"])
-            #Compute post/pre rmspe ratio
+            
+            #Compute post/pre rmspe ratio and add to rmspe_df
             rmspe_df["post/pre"] = rmspe_df["post_rmspe"] / rmspe_df["pre_rmspe"]
-
+            
+            #Store it
             data.rmspe_df = rmspe_df
             return
             
