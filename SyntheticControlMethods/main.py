@@ -23,9 +23,10 @@ class SynthBase(object):
     
     def __init__(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, control_units,
                 covariates, periods_all, periods_pre_treatment, n_controls, n_covariates,
-                treated_outcome, control_outcome, treated_covariates, control_covariates,
+                treated_outcome, control_outcome, treated_covariates, control_covariates, 
+                unscaled_treated_covariates, unscaled_control_covariates,
                 treated_outcome_all, control_outcome_all, pairwise_difference, pen,
-                treatment_effect=None, w=None, **kwargs):
+                w=None, v=None, **kwargs):
 
         '''
         INPUT VARIABLES:
@@ -105,15 +106,17 @@ class SynthBase(object):
         self.control_outcome = control_outcome
         self.treated_covariates = treated_covariates
         self.control_covariates = control_covariates
+        self.unscaled_treated_covariates = unscaled_treated_covariates
+        self.unscaled_control_covariates = unscaled_control_covariates
         self.treated_outcome_all = treated_outcome_all
         self.control_outcome_all = control_outcome_all
         self.pairwise_difference = pairwise_difference
 
         ###Post inference quantities
-        self.w = w #Can be provided if using Synthetic DID
+        self.w = w #Can be provided
+        self.v = v #Can be provided
         self.weight_df = None
-        self.v = None
-        self.treatment_effect = treatment_effect #If known
+        self.comparison_df = None
         self.synth_outcome = None
         self.synth_constant = None
         self.synth_covariates = None
@@ -154,7 +157,7 @@ class DataProcessor(object):
         control_units = dataset.loc[dataset[id_var] != treated_unit][id_var].unique()
 
         ###Get treated unit matrices first###
-        treated_outcome_all, treated_outcome, treated_covariates = self._process_treated_data(
+        treated_outcome_all, treated_outcome, unscaled_treated_covariates = self._process_treated_data(
             dataset, outcome_var, id_var, time_var, 
             treatment_period, treated_unit, periods_all, 
             periods_pre_treatment, covariates, n_covariates
@@ -165,20 +168,20 @@ class DataProcessor(object):
                 "\n", treated_covariates)
         '''
         ### Now for control unit matrices ###
-        control_outcome_all, control_outcome, control_covariates = self._process_control_data(
+        control_outcome_all, control_outcome, unscaled_control_covariates = self._process_control_data(
             dataset, outcome_var, id_var, time_var, 
             treatment_period, treated_unit, n_controls, 
             periods_all, periods_pre_treatment, covariates
         )
         
         #Rescale covariates to be unit variance (helps with optimization)
-        treated_covariates, control_covariates = self._rescale_covariate_variance(treated_covariates,
-                                                                            control_covariates,
+        treated_covariates, control_covariates = self._rescale_covariate_variance(unscaled_treated_covariates,
+                                                                            unscaled_control_covariates,
                                                                             n_covariates)
         
         #Get matrix of unitwise differences between control units to treated unit
         pairwise_difference = self._get_pairwise_difference_matrix(treated_covariates, 
-                                                                  control_covariates)
+                                                                   control_covariates)
 
         return {
             'dataset': dataset,
@@ -196,9 +199,11 @@ class DataProcessor(object):
             'treated_outcome_all': treated_outcome_all,
             'treated_outcome': treated_outcome,
             'treated_covariates': treated_covariates,
+            'unscaled_treated_covariates':unscaled_treated_covariates,
             'control_outcome_all': control_outcome_all,
             'control_outcome': control_outcome,
             'control_covariates': control_covariates,
+            'unscaled_control_covariates': unscaled_control_covariates,
             'pairwise_difference':pairwise_difference,
             'pen':pen
         }
@@ -268,8 +273,63 @@ class DataProcessor(object):
         Used in optimization objective for both SC and DSC
         '''
         return treated_covariates - control_covariates
-
     
+    def _get_weight_df(self, data):
+      '''Prepares dataframe with weight assigned to each unit in synthetic control'''
+      
+      weight_df = pd.DataFrame({"Unit":data.control_units,
+                                        "Weight":data.w.T[0]})
+      #Show only units with non-zero weights
+      return weight_df.loc[weight_df["Weight"] > 0.00001] 
+    
+    def _get_comparison_df(self, data):
+      '''
+      Returns dataframe with shape (n_covariates, 4).
+      The four columns are:
+
+        self.original_data.treated_unit: 
+          Unscaled, average covariate values of the treated unit
+        
+        Synthetic Control: 
+          Unscaled, covariate values of the synthetic control unit
+      
+        WMAUE:
+          Weighted Mean Absolute Unitwise Error. For each covariate, how different is each control 
+          unit inside the synthetic control from the treated unit, weighted by the weight assigned to each unit.
+        
+        
+        Importance:
+          Leading diagonal of V matrix. How important, relative to other covariates,
+          is matching on each covariate in the optimization process?
+          Note that this is computed after rescaling each covariate to be unit variance, 
+          whereas the other columns show the unscaled covariate values.
+      
+      Interpretation:
+      If the synthetic control has good fit, the following things should be true:
+
+        1. Each row of the first two columns should be approximately equal. 
+           This means the synthetic control has reconstructed the treated unit values.
+
+        2. The third column should be small, relative to the values in columns 1 and 2. 
+           The closer to zero, the more similar the individual control units inside the syntetic control are to the treated unit.
+           The smaller the MWAUE, the lower the potential bias, all else equal.
+        
+        3. There is fixed way to interpret the importance column. Instead, it should be evaluated using domain knowledge.
+           Is the relative importance assigned to each covariate reasonable given the context?
+      '''
+       
+      #MAUWE
+      #cvx.sum(V @ (cvx.square(treated_covariates - control_covariates) @ w))
+      wmape = (np.abs((data.unscaled_treated_covariates - data.unscaled_control_covariates)) @ data.w).reshape(data.n_covariates,)
+      
+      comparison_df = pd.DataFrame({data.treated_unit: data.unscaled_treated_covariates.ravel(),
+                                    "Synthetic " + data.treated_unit: (data.unscaled_control_covariates @ data.w).ravel(),
+                                    "WMAPE": wmape,
+                                    "Importance":data.v},
+                                    index=data.covariates)
+      return comparison_df
+      
+
 class Synth(Inferences, Plot, DataProcessor):
 
     def __init__(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, n_optim=10, pen=0, **kwargs):
@@ -328,8 +388,9 @@ class Synth(Inferences, Plot, DataProcessor):
         self._pre_post_rmspe_ratios(None, False)
 
         #Prepare weight_df with unit weights
-        self.original_data.weight_df = pd.DataFrame({"Unit":self.original_data.control_units,
-                                        "Weight":self.original_data.w.T[0]})
+        self.original_data.weight_df = self._get_weight_df(self.original_data)
+        self.original_data.comparison_df = self._get_comparison_df(self.original_data)
+
 
 class DiffSynth(Inferences, Plot, DataProcessor):
 
@@ -398,9 +459,9 @@ class DiffSynth(Inferences, Plot, DataProcessor):
         #Compute rmspe_df for treated unit Synthetic Control
         self._pre_post_rmspe_ratios(None, False)
 
-        #Prepare weight_df with unit weights
-        self.weights_df = pd.DataFrame({"Unit":self.original_data.control_units,
-                                        "Weight":self.original_data.w.T[0]})
+        #Prepare tables
+        self.original_data.weight_df = self._get_weight_df(self.original_data)
+        self.original_data.comparison_df = self._get_comparison_df(self.original_data)
 
     def difference_data(self, dataset, not_diff_cols):
         '''
