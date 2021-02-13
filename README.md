@@ -1,5 +1,5 @@
-# Synthetic Control
-Currently, the package implements both the Synthetic Control method and the Differenced Synthetic Control method.
+# Synthetic Control variants currently supported
+Currently, the package implements the Synthetic Control method, the Penalized Synthetic Control method, the Differenced Synthetic Control method and the Penalized Differenced Synthetic Control method.
 
 
 ## A Python package for causal inference using synthetic controls
@@ -23,8 +23,8 @@ from SyntheticControlMethods import Synth
 data = pd.read_csv("examples/german_reunification.csv")
 data = data.drop(columns="code", axis=1)
 
-#Fit Synthetic Control
-sc = Synth(data, "gdp", "country", "year", 1990, "West Germany")
+#Fit classic Synthetic Control
+sc = Synth(data, "gdp", "country", "year", 1990, "West Germany", pen=0)
 
 #Visualize synthetic control
 sc.plot(["original", "pointwise", "cumulative"], treated_label="West Germany", 
