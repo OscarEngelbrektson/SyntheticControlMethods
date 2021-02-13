@@ -24,7 +24,7 @@ class SynthBase(object):
     def __init__(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, control_units,
                 covariates, periods_all, periods_pre_treatment, n_controls, n_covariates,
                 treated_outcome, control_outcome, treated_covariates, control_covariates,
-                treated_outcome_all, control_outcome_all,
+                treated_outcome_all, control_outcome_all, pairwise_difference, pen,
                 treatment_effect=None, w=None, **kwargs):
 
         '''
@@ -59,8 +59,9 @@ class SynthBase(object):
         self.periods_all = periods_all
         self.periods_pre_treatment = periods_pre_treatment
         self.n_controls = n_controls
-        self.n_covariates = n_covariates 
-               
+        self.n_covariates = n_covariates
+        self.pen = pen
+
         
         '''
         PROCESSED VARIABLES:
@@ -106,6 +107,7 @@ class SynthBase(object):
         self.control_covariates = control_covariates
         self.treated_outcome_all = treated_outcome_all
         self.control_outcome_all = control_outcome_all
+        self.pairwise_difference = pairwise_difference
 
         ###Post inference quantities
         self.w = w #Can be provided if using Synthetic DID
@@ -132,7 +134,7 @@ class SynthBase(object):
 
 class DataProcessor(object):
     
-    def _process_input_data(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs):
+    def _process_input_data(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, **kwargs):
         '''
         Extracts processed variables, excluding v and w, from input variables.
         These are all the data matrices.
@@ -157,7 +159,11 @@ class DataProcessor(object):
             treatment_period, treated_unit, periods_all, 
             periods_pre_treatment, covariates, n_covariates
         )
-        
+        '''
+        print("treated_covariates")
+        print(treated_covariates.shape,
+                "\n", treated_covariates)
+        '''
         ### Now for control unit matrices ###
         control_outcome_all, control_outcome, control_covariates = self._process_control_data(
             dataset, outcome_var, id_var, time_var, 
@@ -169,6 +175,10 @@ class DataProcessor(object):
         treated_covariates, control_covariates = self._rescale_covariate_variance(treated_covariates,
                                                                             control_covariates,
                                                                             n_covariates)
+        
+        #Get matrix of unitwise differences between control units to treated unit
+        pairwise_difference = self._get_pairwise_difference_matrix(treated_covariates, 
+                                                                  control_covariates)
 
         return {
             'dataset': dataset,
@@ -189,6 +199,8 @@ class DataProcessor(object):
             'control_outcome_all': control_outcome_all,
             'control_outcome': control_outcome,
             'control_covariates': control_covariates,
+            'pairwise_difference':pairwise_difference,
+            'pen':pen
         }
     
     def _process_treated_data(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, 
@@ -226,7 +238,7 @@ class DataProcessor(object):
         control_outcome = np.array(control_data[outcome_var]).reshape(n_controls, periods_pre_treatment).T
         
         #Extract the covariates for all the control units
-        #Identify which rows correspond to which control unit by setting index, 
+        #Identify which rows correspond to which control unit by setting index,
         #then take the unitwise mean of each covariate
         #This results in the desired (n_control x n_covariates) matrix
         control_covariates = np.array(control_data[covariates].\
@@ -244,15 +256,23 @@ class DataProcessor(object):
         big_dataframe /= np.apply_along_axis(np.std, 0, big_dataframe)
 
         #Re-seperate treated and control from big dataframe
-        treated_covariates = big_dataframe[:,0].reshape(1, n_covariates) #First column is treated unit
+        treated_covariates = big_dataframe[:,0].reshape(n_covariates, 1) #First column is treated unit
         control_covariates = big_dataframe[:,1:] #All other columns are control units
 
         #Return covariate matices with unit variance
         return treated_covariates, control_covariates
     
+    def _get_pairwise_difference_matrix(self, treated_covariates, control_covariates):
+        '''
+        Computes matrix of same shape as control_covariates, but with unit-wise difference from treated unit
+        Used in optimization objective for both SC and DSC
+        '''
+        return treated_covariates - control_covariates
+
+    
 class Synth(Inferences, Plot, DataProcessor):
 
-    def __init__(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, n_optim=10, **kwargs):
+    def __init__(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, n_optim=10, pen=0, **kwargs):
         '''
         data: 
           Type: Pandas dataframe. 
@@ -285,18 +305,24 @@ class Synth(Inferences, Plot, DataProcessor):
           Type: int. Default: 10. 
           Number of different initialization values for which the optimization is run. 
           Higher number means longer runtime, but a higher chance of a globally optimal solution.
+
+        pen:
+          Type: float. Default: 0.
+          Penalization coefficient which determines the relative importance of minimizing the sum of the pairwise difference of each individual
+          control unit in the synthetic control and the treated unit, vis-a-vis the difference between the synthtic control and the treated unit
+          Higher number means pairwise difference matters more.
         '''
         self.method = "SC"
 
         original_checked_input = self._process_input_data(
-            dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs
+            dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, **kwargs
         )
         self.original_data = SynthBase(**original_checked_input)
 
         #Get synthetic Control
         self.optimize(self.original_data.treated_outcome, self.original_data.treated_covariates,
                     self.original_data.control_outcome, self.original_data.control_covariates, 
-                    self.original_data, False, n_optim)
+                    self.original_data, False, pen, n_optim)
         
         #Compute rmspe_df
         self._pre_post_rmspe_ratios(None, False)
@@ -308,7 +334,7 @@ class Synth(Inferences, Plot, DataProcessor):
 class DiffSynth(Inferences, Plot, DataProcessor):
 
     def __init__(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, 
-                n_optim=10, not_diff_cols=None, **kwargs):
+                n_optim=10, pen=0, not_diff_cols=None, **kwargs):
         '''
         data: 
           Type: Pandas dataframe. 
@@ -352,21 +378,22 @@ class DiffSynth(Inferences, Plot, DataProcessor):
 
         #Process original data - will be used in plotting and summary
         original_checked_input = self._process_input_data(
-            dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs
+            dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, **kwargs
         )
         self.original_data = SynthBase(**original_checked_input)
 
         #Process differenced data - will be used in inference
         modified_dataset = self.difference_data(dataset, not_diff_cols)
         modified_checked_input = self._process_input_data(
-            modified_dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, **kwargs
+            modified_dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, **kwargs
         )
         self.modified_data = SynthBase(**modified_checked_input)
+        self.modified_data.pairwise_difference = self.original_data.pairwise_difference 
 
         #Get synthetic Control
         self.optimize(self.modified_data.treated_outcome, self.modified_data.treated_covariates,
                     self.modified_data.control_outcome, self.modified_data.control_covariates, 
-                    self.modified_data, False, n_optim)
+                    self.modified_data, False, pen, n_optim)
         
         #Compute rmspe_df for treated unit Synthetic Control
         self._pre_post_rmspe_ratios(None, False)

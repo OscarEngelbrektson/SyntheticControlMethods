@@ -24,7 +24,8 @@ class Inferences(object):
                 control_outcome, control_covariates, 
                 data,
                 placebo,
-                steps=8, verbose=False):
+                pen, steps=8, 
+                verbose=False):
         '''
         Solves the nested optimization function of finding the optimal synthetic control
 
@@ -41,7 +42,7 @@ class Inferences(object):
         '''
         args = (treated_outcome, treated_covariates,
                 control_outcome, control_covariates,
-                placebo, data)
+                pen, placebo, data)
         
         for step in range(steps):
 
@@ -82,7 +83,7 @@ class Inferences(object):
     def total_loss(self, v_0, 
                     treated_outcome, treated_covariates,
                     control_outcome, control_covariates, 
-                    placebo, data):
+                    pen, placebo, data):
         '''
         Solves for w*(v) that minimizes loss function 1 given v,
         Returns loss from loss function 2 with w=w*(v)
@@ -103,8 +104,18 @@ class Inferences(object):
         w = cvx.Variable((n_controls, 1), nonneg=True)
         
         #Define the objective
-        objective = cvx.Minimize(cvx.sum(V @ cvx.square(treated_covariates - control_covariates @ w)))
+
+        #PROBLEM: treated_synth_difference = cvx.sum(V @ cvx.square(treated_covariates.T - control_covariates @ w)) runs better for normal sc,
+        #but it doesnt work at all for in-time placebos, this probably means I am messing up the dimensionality somewhere in the processing
+        #This is a work-around that works, but it ain't pretty
+        if placebo == 'in-time':
+            treated_synth_difference = cvx.sum(V @ cvx.square(treated_covariates - control_covariates @ w))
+        else:
+            treated_synth_difference = cvx.sum(V @ cvx.square(treated_covariates.T - control_covariates @ w))
         
+        pairwise_difference = cvx.sum(V @ (cvx.square(treated_covariates - control_covariates) @ w))
+        objective = cvx.Minimize(treated_synth_difference + pen*pairwise_difference)
+
         #Add constraint sum of weights must equal one
         constraints = [cvx.sum(w) == 1]
         
@@ -162,13 +173,18 @@ class Inferences(object):
             control_placebo_outcome = np.array([data.control_outcome_all[:,j] for j in range(data.n_controls) if j != i]).T
             control_placebo_covariates = np.array([[data.control_covariates[x,j] for j in range(data.n_controls) if j != i] for x in range(data.n_covariates)])
 
+            #Rescale covariates to be unit variance (helps with optimization)
+            treated_placebo_covariates, control_placebo_covariates = self._rescale_covariate_variance(treated_placebo_covariates,
+                                                                            control_placebo_covariates,
+                                                                            data.n_covariates)
+
             #Solve for best synthetic control weights
             self.optimize(treated_placebo_outcome[:data.periods_pre_treatment], 
                             treated_placebo_covariates,
                             control_placebo_outcome[:data.periods_pre_treatment], 
                             control_placebo_covariates,
                             data,
-                            "in-space", n_optim)
+                            "in-space", data.pen, n_optim)
             
             #Compute outcome of best synthetic control
             if self.method == "SC":
@@ -221,12 +237,25 @@ class Inferences(object):
             placebo_treatment_period, data.treated_unit, data.n_controls, 
             data.periods_all, periods_pre_treatment, data.covariates
         )
-
+        print("in_time_placebo_treated_covariates")
+        print(in_time_placebo_treated_covariates.shape,
+                "\n", in_time_placebo_treated_covariates)
+        print("in_time_placebo_control_covariates")
+        print(in_time_placebo_control_covariates.shape,
+                "\n", in_time_placebo_control_covariates)
+        '''
+        #Rescale covariates to be unit variance (helps with optimization)
+        in_time_placebo_treated_covariates, in_time_placebo_control_covariates = self._rescale_covariate_variance(in_time_placebo_treated_covariates,
+                                                                            in_time_placebo_control_covariates,
+                                                                            data.n_covariates)
+        '''
+        #in_time_placebo_treated_covariates = in_time_placebo_treated_covariates.reshape(1, data.n_covariates)
         #Run find synthetic control from shortened pre-treatment period 
         self.optimize(in_time_placebo_treated_outcome, in_time_placebo_treated_covariates,
                         in_time_placebo_control_outcome, in_time_placebo_control_covariates,
                         data,
-                        "in-time", n_optim)
+                        "in-time", data.pen, n_optim)
+
         #Compute placebo outcomes using placebo_w vector from optimize
         placebo_outcome = data.in_time_placebo_w.T @ in_time_placebo_control_outcome_all.T
 
