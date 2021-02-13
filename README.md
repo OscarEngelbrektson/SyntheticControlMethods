@@ -1,9 +1,15 @@
-# Synthetic Control variants currently supported
-Currently, the package implements the Synthetic Control method, the Penalized Synthetic Control method, the Differenced Synthetic Control method and the Penalized Differenced Synthetic Control method.
+# Synthetic Control Methods
+Currently, the package implements the:
+* Synthetic Control method
+* Penalized Synthetic Control method
+* Differenced Synthetic Control method
+* Penalized Differenced Synthetic Control method
+
+for cases with a single treated unit.
 
 
 ## A Python package for causal inference using synthetic controls
-This Python package implements an approach to estimating the causal effect of an intervention on a time series. For example, how was West Germany's economy affected by the German Reunification in 1990? Answering a question like this can be difficult when a randomized experiment is not available. This package aims to address this difficulty by providing a systematic way to choose comparison units to estimate how the outcome of interest would have evolved after the intervention if the intervention had not occurred.
+This Python package implements a class of approaches to estimating the causal effect of an intervention on panel data or a time-series. For example, how was West Germany's economy affected by the German Reunification in 1990? Answering a question like this can be difficult when a randomized experiment is not available. This package aims to address this difficulty by providing a systematic way to choose comparison units to estimate how the outcome of interest would have evolved after the intervention if the intervention had not occurred.
 
 As with all approaches to causal inference on non-experimental data, valid conclusions require strong assumptions. This method assumes that the outcome of the treated unit can be explained in terms of a set of control units that were themselves not affected by the intervention. Furthermore, the relationship between the treated and control units is assumed to remain stable during the post-intervention period. Including only control units in your dataset that meet these assumptions is critical to the reliability of causal estimates.
 
