@@ -119,10 +119,10 @@ class Plot(object):
             ax.plot(time ,data.treated_outcome_all, 'b-', label=treated_label)
             ax.axvline(data.treatment_period-1, linestyle=':', color="gray")
             ax.annotate(treatment_label, 
-                xy=(data.treatment_period-1, data.treated_outcome[-1]*1.2),
+                #Put label below outcome if pre-treatment trajectory is decreasing, else above
+                xy=(data.treatment_period-1, data.treated_outcome[-1]*(1 + 0.2*np.sign(data.treated_outcome[-1] - data.treated_outcome[0]))),
                 xytext=(-160, -4),
                 xycoords='data',
-                #textcoords="data",
                 textcoords='offset points',
                 arrowprops=dict(arrowstyle="->"))
             ax.set_ylabel(data.outcome_var)
