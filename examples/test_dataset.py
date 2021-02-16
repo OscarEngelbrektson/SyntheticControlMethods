@@ -9,7 +9,7 @@ from SyntheticControlMethods import Synth, DiffSynth
 data = pd.read_csv("/Users/oscarengelbrektson/Documents/test_dataset.csv")
 
 #Fit Synthetic Control
-sc = DiffSynth(data, "y", "ID", "Time", 10, "A", n_optim=30)
+sc = Synth(data, "y", "ID", "Time", 10, "A", n_optim=30, pen=1)
 
 
 sc.plot(["original", "pointwise", "cumulative"], treated_label="California", 
