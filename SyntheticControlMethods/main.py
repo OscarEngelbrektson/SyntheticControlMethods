@@ -162,11 +162,7 @@ class DataProcessor(object):
             treatment_period, treated_unit, periods_all, 
             periods_pre_treatment, covariates, n_covariates
         )
-        '''
-        print("treated_covariates")
-        print(treated_covariates.shape,
-                "\n", treated_covariates)
-        '''
+
         ### Now for control unit matrices ###
         control_outcome_all, control_outcome, unscaled_control_covariates = self._process_control_data(
             dataset, outcome_var, id_var, time_var, 
@@ -289,13 +285,16 @@ class DataProcessor(object):
 
         self.original_data.treated_unit: 
           Unscaled, average covariate values of the treated unit
+          If method == DSC, then the differenced data is displayed instead
         
         Synthetic Control: 
           Unscaled, covariate values of the synthetic control unit
+          If method == DSC, then the differenced data is displayed instead
       
         WMAUE:
           Weighted Mean Absolute Unitwise Error. For each covariate, how different is each control 
           unit inside the synthetic control from the treated unit, weighted by the weight assigned to each unit.
+          This does not change even if method == DSC, as bias scales with value of difference and not change
         
         
         Importance:
@@ -317,10 +316,12 @@ class DataProcessor(object):
         3. There is fixed way to interpret the importance column. Instead, it should be evaluated using domain knowledge.
            Is the relative importance assigned to each covariate reasonable given the context?
       '''
-       
-      #MAUWE
-      #cvx.sum(V @ (cvx.square(treated_covariates - control_covariates) @ w))
-      wmape = (np.abs((data.unscaled_treated_covariates - data.unscaled_control_covariates)) @ data.w).reshape(data.n_covariates,)
+      data = self.original_data if self.method=='SC' else self.modified_data
+
+      #WMAPE
+      unscaled_treated_covariates = self.original_data.unscaled_treated_covariates 
+      unscaled_control_covariates = self.original_data.unscaled_control_covariates
+      wmape = (np.abs((unscaled_treated_covariates - unscaled_control_covariates)) @ data.w).reshape(data.n_covariates,)
       
       comparison_df = pd.DataFrame({data.treated_unit: data.unscaled_treated_covariates.ravel(),
                                     "Synthetic " + data.treated_unit: (data.unscaled_control_covariates @ data.w).ravel(),
@@ -381,7 +382,8 @@ class Synth(Inferences, Plot, DataProcessor):
 
         #Get synthetic Control
         self.optimize(self.original_data.treated_outcome, self.original_data.treated_covariates,
-                    self.original_data.control_outcome, self.original_data.control_covariates, 
+                    self.original_data.control_outcome, self.original_data.control_covariates,
+                    self.original_data.pairwise_difference,
                     self.original_data, False, pen, n_optim)
         
         #Compute rmspe_df
@@ -453,7 +455,8 @@ class DiffSynth(Inferences, Plot, DataProcessor):
 
         #Get synthetic Control
         self.optimize(self.modified_data.treated_outcome, self.modified_data.treated_covariates,
-                    self.modified_data.control_outcome, self.modified_data.control_covariates, 
+                    self.modified_data.control_outcome, self.modified_data.control_covariates,
+                    self.modified_data.pairwise_difference,
                     self.modified_data, False, pen, n_optim)
         
         #Compute rmspe_df for treated unit Synthetic Control

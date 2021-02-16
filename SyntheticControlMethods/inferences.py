@@ -22,6 +22,7 @@ class Inferences(object):
     def optimize(self,
                 treated_outcome, treated_covariates,
                 control_outcome, control_covariates, 
+                pairwise_difference,
                 data,
                 placebo,
                 pen, steps=8, 
@@ -42,6 +43,7 @@ class Inferences(object):
         '''
         args = (treated_outcome, treated_covariates,
                 control_outcome, control_covariates,
+                pairwise_difference,
                 pen, placebo, data)
         
         for step in range(steps):
@@ -51,13 +53,24 @@ class Inferences(object):
             #Subsequent times, sample a random pmf using the dirichlet distribution
             if step == 0:
                 v_0 = np.full(data.n_covariates, 1/data.n_covariates)
+                if pen == "auto":
+                    #if pen =="auto", we have an additional parameter to optimize over, so we append it
+                    v_0 = np.append(v_0, 0)
             else:
                 #Dirichlet distribution returns a valid pmf over n_covariates states
-                v_0 = np.random.dirichlet(np.ones(data.n_covariates), size=1)            
+                v_0 = np.random.dirichlet(np.ones(data.n_covariates), size=1)
+                if pen == "auto":
+                    #if pen =="auto", we have an additional parameter to optimize over, so we append it
+                    v_0 = np.append(v_0, np.random.lognormal(1.5, 1, size=1)) #Still experimenting with what distribution is appropriate
+            
 
             #Required to have non negative values
-            bnds = tuple((0,1) for _ in range(data.n_covariates))
-            
+            if pen != "auto":
+                bnds = tuple((0,1) for _ in range(data.n_covariates))
+            else:
+                #if pen =="auto", we have an additional parameter to optimize over, and we need to bound it to be non-negative
+                bnds = tuple((0,20) if ((pen=="auto") and (x==data.n_covariates)) else (0,1) for x in range(data.n_covariates + 1))
+
             #Optimze
             res = minimize(self.total_loss, v_0,  args=(args),
                             method='L-BFGS-B', bounds=bnds, 
@@ -83,6 +96,7 @@ class Inferences(object):
     def total_loss(self, v_0, 
                     treated_outcome, treated_covariates,
                     control_outcome, control_covariates, 
+                    pairwise_difference,
                     pen, placebo, data):
         '''
         Solves for w*(v) that minimizes loss function 1 given v,
@@ -97,8 +111,12 @@ class Inferences(object):
 
         n_controls = control_outcome.shape[1]
         
-        V = np.zeros(shape=(data.n_covariates, data.n_covariates))
-        np.fill_diagonal(V, v_0)
+        if pen == "auto":
+            V = np.diag(v_0[:-1])
+            pen_coef = v_0[-1]
+        else:
+            V = np.diag(v_0)
+            pen_coef = pen
         
         # Construct the problem - constrain weights to be non-negative
         w = cvx.Variable((n_controls, 1), nonneg=True)
@@ -113,8 +131,8 @@ class Inferences(object):
         else:
             treated_synth_difference = cvx.sum(V @ cvx.square(treated_covariates.T - control_covariates @ w))
         
-        pairwise_difference = cvx.sum(V @ (cvx.square(treated_covariates - control_covariates) @ w))
-        objective = cvx.Minimize(treated_synth_difference + pen*pairwise_difference)
+        pairwise_difference = cvx.sum(V @ (cvx.square(pairwise_difference) @ w))
+        objective = cvx.Minimize(treated_synth_difference + pen_coef*pairwise_difference)
 
         #Add constraint sum of weights must equal one
         constraints = [cvx.sum(w) == 1]
@@ -133,10 +151,11 @@ class Inferences(object):
             if loss < data.min_loss:
                 data.min_loss = loss
                 data.w = w.value
-                data.v = v_0
+                data.v = np.diagonal(V)
+                data.pen = pen_coef
                 data.synth_outcome = data.w.T @ data.control_outcome_all.T #Transpose to make it (n_periods x 1)
                 data.synth_covariates = data.control_covariates @ data.w
-        
+
         elif placebo == "in-space":
             data.in_space_placebo_w = w.value
 
@@ -178,13 +197,16 @@ class Inferences(object):
                                                                             control_placebo_covariates,
                                                                             data.n_covariates)
 
+            pairwise_difference = treated_placebo_covariates - control_placebo_covariates
+
             #Solve for best synthetic control weights
             self.optimize(treated_placebo_outcome[:data.periods_pre_treatment], 
                             treated_placebo_covariates,
                             control_placebo_outcome[:data.periods_pre_treatment], 
                             control_placebo_covariates,
+                            pairwise_difference,
                             data,
-                            "in-space", data.pen, n_optim)
+                            "in-space", "auto", n_optim)
             
             #Compute outcome of best synthetic control
             if self.method == "SC":
@@ -237,12 +259,17 @@ class Inferences(object):
             placebo_treatment_period, data.treated_unit, data.n_controls, 
             data.periods_all, periods_pre_treatment, data.covariates
         )
+
+        pairwise_difference = in_time_placebo_treated_covariates - in_time_placebo_control_covariates
+
+        '''
         print("in_time_placebo_treated_covariates")
         print(in_time_placebo_treated_covariates.shape,
                 "\n", in_time_placebo_treated_covariates)
         print("in_time_placebo_control_covariates")
         print(in_time_placebo_control_covariates.shape,
                 "\n", in_time_placebo_control_covariates)
+        '''
         '''
         #Rescale covariates to be unit variance (helps with optimization)
         in_time_placebo_treated_covariates, in_time_placebo_control_covariates = self._rescale_covariate_variance(in_time_placebo_treated_covariates,
@@ -253,8 +280,9 @@ class Inferences(object):
         #Run find synthetic control from shortened pre-treatment period 
         self.optimize(in_time_placebo_treated_outcome, in_time_placebo_treated_covariates,
                         in_time_placebo_control_outcome, in_time_placebo_control_covariates,
+                        pairwise_difference,
                         data,
-                        "in-time", data.pen, n_optim)
+                        "in-time", 0, n_optim)
 
         #Compute placebo outcomes using placebo_w vector from optimize
         placebo_outcome = data.in_time_placebo_w.T @ in_time_placebo_control_outcome_all.T
@@ -407,6 +435,7 @@ class Inferences(object):
         if not placebo:
             self.original_data.w = self.modified_data.w
             self.original_data.v = self.modified_data.v
+            self.original_data.pen = self.modified_data.pen
             self.original_data.synth_constant, self.original_data.synth_outcome = self._get_dsc_outcome(self.original_data.w,
                                                                                                         self.original_data.control_outcome_all,
                                                                                                         self.original_data.periods_pre_treatment,
