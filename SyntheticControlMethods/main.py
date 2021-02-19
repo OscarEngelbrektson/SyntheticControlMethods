@@ -137,13 +137,17 @@ class SynthBase(object):
 
 class DataProcessor(object):
     
-    def _process_input_data(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, **kwargs):
+    def _process_input_data(self, dataset, 
+                            outcome_var, id_var, time_var, 
+                            treatment_period, treated_unit, 
+                            pen, exclude_columns, 
+                            **kwargs):
         '''
         Extracts processed variables, excluding v and w, from input variables.
         These are all the data matrices.
         '''
         #All columns not y, id or time must be predictors
-        covariates = [col for col in dataset.columns if col not in [id_var, time_var]]
+        covariates = [col for col in dataset.columns if col not in [id_var, time_var] and col not in exclude_columns]
 
         #Extract quantities needed for pre-processing matrices
         #Get number of periods in pre-treatment and total
@@ -333,7 +337,11 @@ class DataProcessor(object):
 
 class Synth(Inferences, Plot, DataProcessor):
 
-    def __init__(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, n_optim=10, pen=0, **kwargs):
+    def __init__(self, dataset, 
+                outcome_var, id_var, time_var, 
+                treatment_period, treated_unit, 
+                n_optim=10, pen=0, exclude_columns=[],
+                **kwargs):
         '''
         data: 
           Type: Pandas dataframe. 
@@ -376,7 +384,7 @@ class Synth(Inferences, Plot, DataProcessor):
         self.method = "SC"
 
         original_checked_input = self._process_input_data(
-            dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, **kwargs
+            dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, exclude_columns, **kwargs
         )
         self.original_data = SynthBase(**original_checked_input)
 
@@ -396,8 +404,12 @@ class Synth(Inferences, Plot, DataProcessor):
 
 class DiffSynth(Inferences, Plot, DataProcessor):
 
-    def __init__(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, 
-                n_optim=10, pen=0, not_diff_cols=None, **kwargs):
+    def __init__(self, dataset, 
+                outcome_var, id_var, time_var, 
+                treatment_period, treated_unit, 
+                n_optim=10, pen=0, 
+                exclude_columns=[], not_diff_cols=None,
+                **kwargs):
         '''
         data: 
           Type: Pandas dataframe. 
