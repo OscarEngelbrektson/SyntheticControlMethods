@@ -74,7 +74,7 @@ class Inferences(object):
             #Optimze
             res = minimize(self.total_loss, v_0,  args=(args),
                             method='L-BFGS-B', bounds=bnds, 
-                            options={'gtol': 1e-6,'disp':3, 'iprint':3})
+                            options={'gtol': 1e-8,'disp':3, 'iprint':3})
             
             if verbose:
                 print("Successful:", res.success)
@@ -151,7 +151,7 @@ class Inferences(object):
             if loss < data.min_loss:
                 data.min_loss = loss
                 data.w = w.value
-                data.v = np.diagonal(V)
+                data.v = np.diagonal(V) / np.sum(np.diagonal(V)) #Make sure its normailzed (sometimes the optimizers diverge from bounds)
                 data.pen = pen_coef
                 data.synth_outcome = data.w.T @ data.control_outcome_all.T #Transpose to make it (n_periods x 1)
                 data.synth_covariates = data.control_covariates @ data.w
