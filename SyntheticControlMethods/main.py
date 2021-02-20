@@ -45,8 +45,6 @@ class SynthBase(object):
         Time: an integer indicating the time period to which the observation corresponds.
         
         treated_unit: ID of the treated unit
-        
-        treatment_effect:
         '''
 
         self.dataset = dataset
@@ -317,7 +315,7 @@ class DataProcessor(object):
            The closer to zero, the more similar the individual control units inside the syntetic control are to the treated unit.
            The smaller the MWAUE, the lower the potential bias, all else equal.
         
-        3. There is fixed way to interpret the importance column. Instead, it should be evaluated using domain knowledge.
+        3. There is no fixed way to interpret the importance column. Instead, it should be evaluated using domain knowledge.
            Is the relative importance assigned to each covariate reasonable given the context?
       '''
       data = self.original_data if self.method=='SC' else self.modified_data
@@ -378,7 +376,7 @@ class Synth(Inferences, Plot, DataProcessor):
         pen:
           Type: float. Default: 0.
           Penalization coefficient which determines the relative importance of minimizing the sum of the pairwise difference of each individual
-          control unit in the synthetic control and the treated unit, vis-a-vis the difference between the synthtic control and the treated unit
+          control unit in the synthetic control and the treated unit, vis-a-vis the difference between the synthetic control and the treated unit.
           Higher number means pairwise difference matters more.
         '''
         self.method = "SC"
@@ -448,6 +446,12 @@ class DiffSynth(Inferences, Plot, DataProcessor):
             List of column names to omit from pre-processing, e.g. compute the first difference for. 
             Typically, columns should be included if the proportion of missing values is high.
             This is because the first difference is only defined for two consecutive values.
+         
+        pen:
+         Type: float. Default: 0.
+         Penalization coefficient which determines the relative importance of minimizing the sum of the pairwise difference of each individual
+         control unit in the synthetic control and the treated unit, vis-a-vis the difference between the synthetic control and the treated unit.
+         Higher number means pairwise difference matters more.
         '''
         self.method = "DSC"
 
@@ -457,7 +461,7 @@ class DiffSynth(Inferences, Plot, DataProcessor):
         )
         self.original_data = SynthBase(**original_checked_input)
 
-        #Process differenced data - will be used in inference
+        #Process differenced data - will be used in inference and optimization
         modified_dataset = self.difference_data(dataset, not_diff_cols)
         modified_checked_input = self._process_input_data(
             modified_dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, **kwargs
@@ -474,7 +478,7 @@ class DiffSynth(Inferences, Plot, DataProcessor):
         #Compute rmspe_df for treated unit Synthetic Control
         self._pre_post_rmspe_ratios(None, False)
 
-        #Prepare tables
+        #Prepare summary tables
         self.original_data.weight_df = self._get_weight_df(self.original_data)
         self.original_data.comparison_df = self._get_comparison_df(self.original_data)
 
@@ -489,7 +493,8 @@ class DiffSynth(Inferences, Plot, DataProcessor):
         
         Additional processing:
 
-        1. Imputes missing values using linear interpolation. (first difference is undefined if two consecutive periods are not present)
+        1. Imputes missing values using linear interpolation. 
+           An important step because the first difference is undefined if two consecutive periods are not present.
         '''
         #Make deepcopy of original data as base
         modified_dataset = copy.deepcopy(dataset)
