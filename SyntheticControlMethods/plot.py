@@ -28,7 +28,7 @@ class Plot(object):
             panels, 
             figsize=(15, 12), 
             treated_label="Treated Unit",
-            synth_label="Synthetic Control",
+            synth_label="Synthetic Treated Unit",
             treatment_label="Treatment",
             in_space_exclusion_multiple=5): 
         '''

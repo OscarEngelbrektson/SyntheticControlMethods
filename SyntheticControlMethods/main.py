@@ -457,14 +457,14 @@ class DiffSynth(Inferences, Plot, DataProcessor):
 
         #Process original data - will be used in plotting and summary
         original_checked_input = self._process_input_data(
-            dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, **kwargs
+            dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, exclude_columns, **kwargs
         )
         self.original_data = SynthBase(**original_checked_input)
 
         #Process differenced data - will be used in inference and optimization
         modified_dataset = self.difference_data(dataset, not_diff_cols)
         modified_checked_input = self._process_input_data(
-            modified_dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, **kwargs
+            modified_dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, exclude_columns, **kwargs
         )
         self.modified_data = SynthBase(**modified_checked_input)
         self.modified_data.pairwise_difference = self.original_data.pairwise_difference 
