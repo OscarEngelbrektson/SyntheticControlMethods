@@ -66,7 +66,8 @@ class SummaryTables(object):
       comparison_df = pd.DataFrame({data.treated_unit: data.unscaled_treated_covariates.ravel(),
                                     "Synthetic " + data.treated_unit: (data.unscaled_control_covariates @ data.w).ravel(),
                                     "WMAPE": wmape,
-                                    "Importance":data.v},
+                                    "Importance":data.v,
+                                    "Control Group Average": data.unscaled_control_covariates.mean(axis=1)},
                                     index=data.covariates)
       return comparison_df
 
