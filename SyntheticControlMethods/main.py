@@ -141,7 +141,8 @@ class DataProcessor(object):
     def _process_input_data(self, dataset, 
                             outcome_var, id_var, time_var, 
                             treatment_period, treated_unit, 
-                            pen, exclude_columns, 
+                            pen, exclude_columns,
+                            custom_predictors, 
                             **kwargs):
         '''
         Extracts processed variables, excluding v and w, from input variables.
@@ -165,14 +166,16 @@ class DataProcessor(object):
         treated_outcome_all, treated_outcome, unscaled_treated_covariates = self._process_treated_data(
             dataset, outcome_var, id_var, time_var, 
             treatment_period, treated_unit, periods_all, 
-            periods_pre_treatment, covariates, n_covariates
+            periods_pre_treatment, covariates, 
+            n_covariates, custom_predictors
         )
 
         ### Now for control unit matrices ###
         control_outcome_all, control_outcome, unscaled_control_covariates = self._process_control_data(
             dataset, outcome_var, id_var, time_var, 
             treatment_period, treated_unit, n_controls, 
-            periods_all, periods_pre_treatment, covariates
+            periods_all, periods_pre_treatment,
+            covariates, custom_predictors
         )
         
         #Rescale covariates to be unit variance (helps with optimization)
@@ -210,7 +213,7 @@ class DataProcessor(object):
         }
     
     def _process_treated_data(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, 
-                            periods_all, periods_pre_treatment, covariates, n_covariates):
+                            periods_all, periods_pre_treatment, covariates, n_covariates, custom_predictors):
         '''
         Extracts and formats outcome and covariate matrices for the treated unit
         '''
@@ -225,11 +228,13 @@ class DataProcessor(object):
         #Columnwise mean of each covariate in pre-treatment period for treated unit, shape as matrix
         treated_covariates = np.array(treated_data[covariates].mean(axis=0)).reshape(n_covariates, 1)
 
+        treated_covariates = self._get_custom_predictors(treated_data, treated_covariates, covariates, 
+                                                        time_var, id_var, custom_predictors)
+
         return treated_outcome_all, treated_outcome, treated_covariates
     
-
     def _process_control_data(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, n_controls, 
-                            periods_all, periods_pre_treatment, covariates):
+                            periods_all, periods_pre_treatment, covariates, custom_predictors):
         '''
         Extracts and formats outcome and covariate matrices for the control group
         '''
@@ -250,7 +255,46 @@ class DataProcessor(object):
         control_covariates = np.array(control_data[covariates].\
                 set_index(np.arange(len(control_data[covariates])) // periods_pre_treatment).mean(level=0)).T
 
+        #Here special predictors
+        control_covariates = self._get_custom_predictors(control_data, control_covariates, covariates, 
+                                                        time_var, id_var, custom_predictors, treated=False)
+
         return control_outcome_all, control_outcome, control_covariates
+
+    def _get_custom_predictors(self, data, covariate_matrix, covariates, time_var, id_var, custom_predictors, treated=True):
+        '''
+        Updates covariates to have unit-wise values averaged over custom time periods,
+        as indicated by custom_predictors dict
+
+        Approach:
+        1. find column in covariate_matrix that corresponds to key in custom_predictors
+        2. Compute unit-wise mean over timeperiod specified by value corresponding to key in 1
+        3. Replace column in covariate_matrix with column of values computed in 2 
+        3. Repeat for each key-value pair in custom_predictors
+        '''
+
+        if custom_predictors == None:
+          return covariate_matrix
+        
+        #For each covariate for which a custom range is desired
+        for covariate in custom_predictors.keys():
+
+          #Get data from cusotm time period
+          data_in_custom_range = data.loc[(data[time_var] >= custom_predictors[covariate][0]) & (data[time_var] <= custom_predictors[covariate][1])]
+          position = covariates.index(covariate)
+
+          if treated:
+            covariate_matrix[position] = data_in_custom_range[covariate].mean()
+          
+          else: #if control
+            #Get mean in time range for each control unit
+            custom_covariate = data_in_custom_range.groupby(id_var)[covariate].mean()
+
+            #Replace old average with new custom average
+            covariate_matrix[position,:] = custom_covariate
+          
+        return covariate_matrix
+      
 
     def _rescale_covariate_variance(self, treated_covariates, control_covariates, n_covariates):
         '''Rescale covariates to be unit variance'''
@@ -281,7 +325,9 @@ class Synth(DataProcessor, Optimize, Plot, SummaryTables, ValidityTests):
     def __init__(self, dataset, 
                 outcome_var, id_var, time_var, 
                 treatment_period, treated_unit, 
-                n_optim=10, pen=0, exclude_columns=[],
+                n_optim=10, pen=0, 
+                exclude_columns=[],
+                custom_predictors=None,
                 **kwargs):
         '''
         data: 
@@ -325,7 +371,7 @@ class Synth(DataProcessor, Optimize, Plot, SummaryTables, ValidityTests):
         self.method = "SC"
 
         original_checked_input = self._process_input_data(
-            dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, exclude_columns, **kwargs
+            dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, exclude_columns, custom_predictors, **kwargs
         )
         self.original_data = SynthBase(**original_checked_input)
 
@@ -349,7 +395,9 @@ class DiffSynth(DataProcessor, Optimize, Plot, SummaryTables, ValidityTests):
                 outcome_var, id_var, time_var, 
                 treatment_period, treated_unit, 
                 n_optim=10, pen=0, 
-                exclude_columns=[], not_diff_cols=None,
+                exclude_columns=[], 
+                custom_predictors=None,
+                not_diff_cols=None,
                 **kwargs):
         '''
         data: 
@@ -400,14 +448,14 @@ class DiffSynth(DataProcessor, Optimize, Plot, SummaryTables, ValidityTests):
 
         #Process original data - will be used in plotting and summary
         original_checked_input = self._process_input_data(
-            dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, exclude_columns, **kwargs
+            dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, exclude_columns, custom_predictors, **kwargs
         )
         self.original_data = SynthBase(**original_checked_input)
 
         #Process differenced data - will be used in inference and optimization
         modified_dataset = self.difference_data(dataset, not_diff_cols)
         modified_checked_input = self._process_input_data(
-            modified_dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, exclude_columns, **kwargs
+            modified_dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, exclude_columns, custom_predictors, **kwargs
         )
         self.modified_data = SynthBase(**modified_checked_input)
         self.modified_data.pairwise_difference = self.original_data.pairwise_difference 
