@@ -9,9 +9,27 @@ data_dir = "https://raw.githubusercontent.com/OscarEngelbrektson/SyntheticContro
 data = pd.read_csv(data_dir + "german_reunification" + ".csv")
 data = data.drop(columns="code", axis=1)
 
+
+
 '''
+Notes: GDP per capita, inflation rate, trade openness, and industry
+share are averaged for the 1981–90 period. Investment rate and
+schooling are averaged for the 1980–85 period. The last column
+reports a population-weighted average for the 16 OECD countries
+in the donor pool.
+'''
+
+custom_predictors = {
+                    "gdp": ["gdp", (1981, 1990)],
+                    "infrate": ["infrate", (1981, 1990)],
+                    "trade": ["trade", (1981, 1990)],
+                    "schooling": ["schooling", (1980, 1985)],
+                    }
+
 #Fit Synthetic Control
-sc = Synth(data, "gdp", "country", "year", 1990, "West Germany", n_optim=10, pen="auto")
+sc = Synth(data, "gdp", "country", "year", 1990, "West Germany", n_optim=50, pen=0,
+            exclude_columns=["invest60", "invest70", "gdp", "infrate", "trade", "schooling"],
+            custom_predictors=custom_predictors)
 
 print(sc.original_data.weight_df)
 print(sc.original_data.comparison_df)
@@ -20,7 +38,6 @@ print(sc.original_data.pen)
 #Visualize
 sc.plot(["original", "pointwise", "cumulative"], treated_label="West Germany", 
             synth_label="Synthetic West Germany", treatment_label="German Reunification")
-
 
 #In-time placebo
 #Placebo treatment period is 1982, 8 years earlier
@@ -42,9 +59,12 @@ sc.plot(['rmspe ratio'], treated_label="West Germany",
 sc.plot(['in-space placebo'], in_space_exclusion_multiple=5, treated_label="West Germany",
             synth_label="Synthetic West Germany")
 
-'''
 ### Repeat but with DSC
-dsc = DiffSynth(data, "gdp", "country", "year", 1990, "West Germany", not_diff_cols=["schooling", "invest60", "invest70", "invest80"], n_optim=10, pen="auto")
+dsc = DiffSynth(data, "gdp", "country", "year", 1990, "West Germany", 
+                not_diff_cols=["schooling", "invest60", "invest70", "invest80"], 
+                exclude_columns=["invest60", "invest70", "gdp", "infrate", "trade", "schooling"],
+                custom_predictors=custom_predictors,
+                n_optim=10, pen="auto")
 
 #sc = DiffSynth(data, "gdp", "country", "year", 1990, "West Germany", not_diff_cols=["schooling", "invest60", "invest70", "invest80"], n_optim=1)
 print(dsc.original_data.weight_df)

@@ -147,7 +147,7 @@ class DataProcessor(object):
         Extracts processed variables, excluding v and w, from input variables.
         These are all the data matrices.
         '''
-        #All columns not y, id or time must be predictors
+        #All columns not y, id or time must be predictors – if not in exclude_columns
         covariates = [col for col in dataset.columns if col not in [id_var, time_var] and col not in exclude_columns]
 
         #Extract quantities needed for pre-processing matrices
@@ -321,13 +321,8 @@ class DataProcessor(object):
           else: #if control
             #Get mean in time range for each control unit
             custom_covariate = data_in_custom_range.groupby(id_var)[covariate].mean()
-            print("custom_covariate", custom_covariate)
-
-            print("before:", covariate_matrix, covariate_matrix.shape)
 
             covariate_matrix = np.append(covariate_matrix, np.array(custom_covariate).reshape(1, covariate_matrix.shape[1]), axis=0)
-            print("after:", covariate_matrix)
-
 
           #Add to covariate matrix as new row
           #print("custom_covariate", custom_covariate, custom_covariate.shape)
