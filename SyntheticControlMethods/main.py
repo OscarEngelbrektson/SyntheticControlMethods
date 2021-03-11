@@ -162,7 +162,7 @@ class DataProcessor(object):
         control_units = dataset.loc[dataset[id_var] != treated_unit][id_var].unique()
 
         ###Get treated unit matrices first###
-        treated_outcome_all, treated_outcome, unscaled_treated_covariates = self._process_treated_data(
+        treated_outcome_all, treated_outcome, unscaled_treated_covariates, modified_covariates = self._process_treated_data(
             dataset, outcome_var, id_var, time_var, 
             treatment_period, treated_unit, periods_all, 
             periods_pre_treatment, covariates, n_covariates
@@ -178,7 +178,7 @@ class DataProcessor(object):
         #Rescale covariates to be unit variance (helps with optimization)
         treated_covariates, control_covariates = self._rescale_covariate_variance(unscaled_treated_covariates,
                                                                             unscaled_control_covariates,
-                                                                            n_covariates)
+                                                                            len(modified_covariates))
         
         #Get matrix of unitwise differences between control units to treated unit
         pairwise_difference = self._get_pairwise_difference_matrix(treated_covariates, 
@@ -192,11 +192,11 @@ class DataProcessor(object):
             'treatment_period':treatment_period,
             'treated_unit':treated_unit,
             'control_units':control_units,
-            'covariates':covariates,
+            'covariates':modified_covariates,
             'periods_all':periods_all,
             'periods_pre_treatment':periods_pre_treatment,
             'n_controls': n_controls,
-            'n_covariates':n_covariates,
+            'n_covariates':len(modified_covariates),
             'treated_outcome_all': treated_outcome_all,
             'treated_outcome': treated_outcome,
             'treated_covariates': treated_covariates,
@@ -225,7 +225,10 @@ class DataProcessor(object):
         #Columnwise mean of each covariate in pre-treatment period for treated unit, shape as matrix
         treated_covariates = np.array(treated_data[covariates].mean(axis=0)).reshape(n_covariates, 1)
 
-        return treated_outcome_all, treated_outcome, treated_covariates
+        treated_covariates, covariates = self._get_custom_predictors(treated_data, treated_covariates, covariates, 
+                                                        time_var, id_var, custom_predictors)
+
+        return treated_outcome_all, treated_outcome, treated_covariates, covariates
     
 
     def _process_control_data(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, n_controls, 
@@ -250,7 +253,90 @@ class DataProcessor(object):
         control_covariates = np.array(control_data[covariates].\
                 set_index(np.arange(len(control_data[covariates])) // periods_pre_treatment).mean(level=0)).T
 
+        #Here special predictors
+        control_covariates, _ = self._get_custom_predictors(control_data, control_covariates, covariates, 
+                                                        time_var, id_var, custom_predictors, treated=False)
+
         return control_outcome_all, control_outcome, control_covariates
+
+    def _get_custom_predictors(self, data, covariate_matrix, covariates, time_var, id_var, custom_predictors, treated=True):
+        '''
+        Updates covariates to have unit-wise values averaged over custom time periods,
+        as indicated by custom_predictors dict
+
+        Arguments:
+          custom_predictors: dict or None
+            If no custom_predictors are given, default is custom_predictors=None and function returns unaltered covariates. 
+            Otherwise:
+
+            Each key is the desired name of the new, custom covariate
+            each value must be a list with three elements: 
+              [covariate, (start_time, end_time)]
+
+              covariate: string
+
+                column name of the covariate on which the custom covariate is based
+                must be in dataset.columns
+              
+              (start_time, end_time): tuple
+
+                Range over which the custom covariate will be computed
+                the range will include both the start and the end time,
+                e.g. (1995,1996) will include both 1995 and 1996.
+                Each element be a value from the time_var column
+
+          E.g.
+           custom_predictors = {
+                                "x1_7": ["x1", (7,7)]
+                                }
+
+        Approach:
+        1. find column in covariate_matrix that corresponds to key in custom_predictors
+        2. Compute unit-wise mean over timeperiod specified by value corresponding to key in 1
+        3. Replace column in covariate_matrix with column of values computed in 2 
+        3. Repeat for each key-value pair in custom_predictors
+        '''
+
+        if custom_predictors == None:
+          return covariate_matrix, covariates
+        
+        #Make copy of covariates to extend with custom covariates
+        modified_covariates = covariates.copy()
+
+        #For each covariate for which a custom range is desired
+        for custom_predictor in custom_predictors.keys():
+          
+          #Get data from custom time period
+          data_in_custom_range = data.loc[(data[time_var] >= custom_predictors[custom_predictor][1][0]) & \
+                                          (data[time_var] <= custom_predictors[custom_predictor][1][1])]
+
+          #Find covariate on which custom predictor is based, and it's position in covariates
+          covariate = custom_predictors[custom_predictor][0]
+
+          #Compute mean value(s) for covariate over custom time range
+          if treated:
+            custom_covariate = data_in_custom_range[covariate].mean()
+            covariate_matrix = np.append(covariate_matrix, np.array(custom_covariate).reshape(1,1), axis=0)
+
+          else: #if control
+            #Get mean in time range for each control unit
+            custom_covariate = data_in_custom_range.groupby(id_var)[covariate].mean()
+            print("custom_covariate", custom_covariate)
+
+            print("before:", covariate_matrix, covariate_matrix.shape)
+
+            covariate_matrix = np.append(covariate_matrix, np.array(custom_covariate).reshape(1, covariate_matrix.shape[1]), axis=0)
+            print("after:", covariate_matrix)
+
+
+          #Add to covariate matrix as new row
+          #print("custom_covariate", custom_covariate, custom_covariate.shape)
+
+          #Add custom predictor to covariates, 
+          modified_covariates.append(custom_predictor)
+
+        return covariate_matrix, modified_covariates
+      
 
     def _rescale_covariate_variance(self, treated_covariates, control_covariates, n_covariates):
         '''Rescale covariates to be unit variance'''
