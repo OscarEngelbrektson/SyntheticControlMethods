@@ -141,7 +141,7 @@ class DataProcessor(object):
     def _process_input_data(self, dataset, 
                             outcome_var, id_var, time_var, 
                             treatment_period, treated_unit, 
-                            pen, exclude_columns, 
+                            pen, exclude_columns, custom_predictors,
                             **kwargs):
         '''
         Extracts processed variables, excluding v and w, from input variables.
@@ -165,14 +165,14 @@ class DataProcessor(object):
         treated_outcome_all, treated_outcome, unscaled_treated_covariates, modified_covariates = self._process_treated_data(
             dataset, outcome_var, id_var, time_var, 
             treatment_period, treated_unit, periods_all, 
-            periods_pre_treatment, covariates, n_covariates
+            periods_pre_treatment, covariates, n_covariates, custom_predictors
         )
 
         ### Now for control unit matrices ###
         control_outcome_all, control_outcome, unscaled_control_covariates = self._process_control_data(
             dataset, outcome_var, id_var, time_var, 
             treatment_period, treated_unit, n_controls, 
-            periods_all, periods_pre_treatment, covariates
+            periods_all, periods_pre_treatment, covariates, custom_predictors
         )
         
         #Rescale covariates to be unit variance (helps with optimization)
@@ -210,7 +210,7 @@ class DataProcessor(object):
         }
     
     def _process_treated_data(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, 
-                            periods_all, periods_pre_treatment, covariates, n_covariates):
+                            periods_all, periods_pre_treatment, covariates, n_covariates, custom_predictors):
         '''
         Extracts and formats outcome and covariate matrices for the treated unit
         '''
@@ -232,7 +232,7 @@ class DataProcessor(object):
     
 
     def _process_control_data(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, n_controls, 
-                            periods_all, periods_pre_treatment, covariates):
+                            periods_all, periods_pre_treatment, covariates, custom_predictors):
         '''
         Extracts and formats outcome and covariate matrices for the control group
         '''
