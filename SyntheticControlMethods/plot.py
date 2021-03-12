@@ -218,15 +218,21 @@ class Plot(object):
         if 'rmspe ratio' in panels:
             assert data.rmspe_df.shape[0] != 1, "Must run in_space_placebo() before you can plot 'rmspe ratio'!"
 
+            #Sort by post/pre rmspe ratio, high
+            sorted_rmspe_df = data.rmspe_df.sort_values(by=["post/pre"], axis=0, ascending=True)
+
             ax = plt.subplot(n_panels, 1, idx)
-        
+            ax.set_title("Postperiod RMSPE / Preperiod RMSPE")
+
+
             #Create horizontal barplot, one bar per unit
             y_pos = np.arange(data.n_controls+1) #Number of units
-            ax.barh(y_pos, data.rmspe_df["post/pre"], color="#3F5D7D",  ec='black')
+            ax.barh(y_pos, sorted_rmspe_df["post/pre"],
+                     color="#3F5D7D",  ec="black") 
             
             #Label bars with unit names
             ax.set_yticks(y_pos)
-            ax.set_yticklabels(data.rmspe_df["unit"])
+            ax.set_yticklabels(sorted_rmspe_df["unit"])
 
             #Label x-axis
             ax.set_xlabel("Postperiod RMSPE / Preperiod RMSPE")
