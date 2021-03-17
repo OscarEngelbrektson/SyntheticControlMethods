@@ -1,12 +1,4 @@
 # Synthetic Control Methods
-Currently, the package implements the:
-* Synthetic Control method
-* Penalized Synthetic Control method
-* Differenced Synthetic Control method
-* Penalized Differenced Synthetic Control method
-
-for cases with a single treated unit.
-
 
 ## A Python package for causal inference using synthetic controls
 This Python package implements a class of approaches to estimating the causal effect of an intervention on panel data or a time-series. For example, how was West Germany's economy affected by the German Reunification in 1990? Answering a question like this can be difficult when a randomized experiment is not available. This package aims to address this difficulty by providing a systematic way to choose comparison units to estimate how the outcome of interest would have evolved after the intervention if the intervention had not occurred.
