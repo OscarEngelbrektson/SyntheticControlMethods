@@ -18,17 +18,18 @@ import copy
 
 from SyntheticControlMethods.optimize import Optimize
 from SyntheticControlMethods.plot import Plot
-from SyntheticControlMethods.summary_tables import SummaryTables
+from SyntheticControlMethods.tables import Tables
 from SyntheticControlMethods.validity_tests import ValidityTests
 
 
 class SynthBase(object):
+    '''Class that stores all variables and results'''
     
     def __init__(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, control_units,
                 covariates, periods_all, periods_pre_treatment, n_controls, n_covariates,
                 treated_outcome, control_outcome, treated_covariates, control_covariates, 
                 unscaled_treated_covariates, unscaled_control_covariates,
-                treated_outcome_all, control_outcome_all, pairwise_difference, pen,
+                treated_outcome_all, control_outcome_all, pairwise_difference, pen, random_seed=0,
                 w=None, v=None, **kwargs):
 
         '''
@@ -63,6 +64,7 @@ class SynthBase(object):
         self.n_controls = n_controls
         self.n_covariates = n_covariates
         self.pen = pen
+        self.rng = np.random.default_rng(random_seed)
 
         
         '''
@@ -141,7 +143,7 @@ class DataProcessor(object):
     def _process_input_data(self, dataset, 
                             outcome_var, id_var, time_var, 
                             treatment_period, treated_unit, 
-                            pen, exclude_columns, 
+                            pen, exclude_columns, random_seed,
                             **kwargs):
         '''
         Extracts processed variables, excluding v and w, from input variables.
@@ -206,7 +208,8 @@ class DataProcessor(object):
             'control_covariates': control_covariates,
             'unscaled_control_covariates': unscaled_control_covariates,
             'pairwise_difference':pairwise_difference,
-            'pen':pen
+            'pen':pen,
+            'random_seed':random_seed,
         }
     
     def _process_treated_data(self, dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, 
@@ -276,12 +279,12 @@ class DataProcessor(object):
         return treated_covariates - control_covariates
       
 
-class Synth(DataProcessor, Optimize, Plot, SummaryTables, ValidityTests):
+class Synth(DataProcessor, Optimize, Plot, Tables, ValidityTests):
 
     def __init__(self, dataset, 
                 outcome_var, id_var, time_var, 
                 treatment_period, treated_unit, 
-                n_optim=10, pen=0, exclude_columns=[],
+                n_optim=10, pen=0, exclude_columns=[], random_seed=0,
                 **kwargs):
         '''
         data: 
@@ -321,11 +324,13 @@ class Synth(DataProcessor, Optimize, Plot, SummaryTables, ValidityTests):
           Penalization coefficient which determines the relative importance of minimizing the sum of the pairwise difference of each individual
           control unit in the synthetic control and the treated unit, vis-a-vis the difference between the synthetic control and the treated unit.
           Higher number means pairwise difference matters more.
+        
         '''
         self.method = "SC"
 
         original_checked_input = self._process_input_data(
-            dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, exclude_columns, **kwargs
+            dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, 
+            exclude_columns, random_seed, **kwargs
         )
         self.original_data = SynthBase(**original_checked_input)
 
@@ -343,13 +348,14 @@ class Synth(DataProcessor, Optimize, Plot, SummaryTables, ValidityTests):
         self.original_data.comparison_df = self._get_comparison_df(self.original_data)
 
 
-class DiffSynth(DataProcessor, Optimize, Plot, SummaryTables, ValidityTests):
+class DiffSynth(DataProcessor, Optimize, Plot, Tables, ValidityTests):
 
     def __init__(self, dataset, 
                 outcome_var, id_var, time_var, 
                 treatment_period, treated_unit, 
                 n_optim=10, pen=0, 
-                exclude_columns=[], not_diff_cols=None,
+                exclude_columns=[], random_seed=0,
+                not_diff_cols=None,
                 **kwargs):
         '''
         data: 
@@ -400,14 +406,16 @@ class DiffSynth(DataProcessor, Optimize, Plot, SummaryTables, ValidityTests):
 
         #Process original data - will be used in plotting and summary
         original_checked_input = self._process_input_data(
-            dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, exclude_columns, **kwargs
+            dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, 
+            exclude_columns, random_seed, **kwargs
         )
         self.original_data = SynthBase(**original_checked_input)
 
         #Process differenced data - will be used in inference and optimization
         modified_dataset = self.difference_data(dataset, not_diff_cols)
         modified_checked_input = self._process_input_data(
-            modified_dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, exclude_columns, **kwargs
+            modified_dataset, outcome_var, id_var, time_var, treatment_period, treated_unit, pen, 
+            exclude_columns, random_seed, **kwargs
         )
         self.modified_data = SynthBase(**modified_checked_input)
         self.modified_data.pairwise_difference = self.original_data.pairwise_difference 
@@ -447,12 +455,14 @@ class DiffSynth(DataProcessor, Optimize, Plot, SummaryTables, ValidityTests):
         ignore_all_cols = not_diff_cols == None
 
         #Compute difference of outcome variable
-        modified_dataset[data.outcome_var] = modified_dataset.groupby(data.id)[data.outcome_var].apply(lambda unit: unit.interpolate(method='linear', limit_direction="both")).diff()
+        modified_dataset[data.outcome_var] = modified_dataset.groupby(data.id)[data.outcome_var].apply(
+                                            lambda unit: unit.interpolate(method='linear', limit_direction="both")).diff()
         
         #For covariates
         for col in data.covariates:
             #Fill in missing values using unitwise linear interpolation
-            modified_dataset[col] = modified_dataset.groupby(data.id)[col].apply(lambda unit: unit.interpolate(method='linear', limit_direction="both"))
+            modified_dataset[col] = modified_dataset.groupby(data.id)[col].apply(
+                                    lambda unit: unit.interpolate(method='linear', limit_direction="both"))
             
             #Compute change from previous period
             if not ignore_all_cols:

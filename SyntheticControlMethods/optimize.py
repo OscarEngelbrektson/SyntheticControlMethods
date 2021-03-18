@@ -86,10 +86,10 @@ class Optimize(object):
                     v_0 = np.append(v_0, 0)
             else:
                 #Dirichlet distribution returns a valid pmf over n_covariates states
-                v_0 = np.random.dirichlet(np.ones(data.n_covariates), size=1)
+                v_0 = self.original_data.rng.dirichlet(np.ones(data.n_covariates), size=1)
                 if pen == "auto":
                     #if pen =="auto", we have an additional parameter to optimize over, so we append it
-                    v_0 = np.append(v_0, np.random.lognormal(1.5, 1, size=1)) #Still experimenting with what distribution is appropriate
+                    v_0 = np.append(v_0, self.original_data.rng.lognormal(1.5, 1, size=1)) #Still experimenting with what distribution is appropriate
             
 
             #Required to have non negative values
