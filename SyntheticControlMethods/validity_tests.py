@@ -17,18 +17,7 @@ import pandas as pd
 
 class ValidityTests(object):
     '''
-    This class contains all validity tests for evaluating synthetic controls.
-    This includes:
-
-    in_space_placebos
-
-    in_time_placebos
-
-    rmspe_df
-
-    weight_df
-
-    comparison_df
+    This class contains all code for running validity tests for evaluating synthetic controls.
     '''
 
     def in_space_placebo(self, n_optim=3):
@@ -165,33 +154,3 @@ class ValidityTests(object):
             normalized_placebo_outcomes.append(normalized_outcome)
 
         return normalized_placebo_outcomes
-
-    def predictor_table(self, 
-                        treated_label="Treated Unit", 
-                        synth_label="Synthetic Control",
-                        include_donor_pool_average=False,
-                        donor_pool_label="Donor pool"):
-        '''
-        Returns a Dataframe with the mean of each predictor for the treated vs control
-        Rows: predictors
-        Columns: Treated unit, Synthetic Control, Donor pool average (optional)
-        
-        include_donor_pool_average: bool. Default=False.
-        Whether or not include a third column with the simple average for the entire donor pool.
-        '''
-
-        data = self.original_data
-
-        if not include_donor_pool_average:
-            
-            table = pd.DataFrame({treated_label: data.treated_covariates.ravel(), 
-                                 synth_label: (data.synth_covariates).ravel()},
-                                index=data.covariates)
-        
-        else:
-            
-            table = pd.DataFrame({treated_label: data.treated_covariates.ravel(), 
-                                 synth_label: (data.synth_covariates).ravel(),
-                                 donor_pool_label: data.control_covariates.mean(axis=1)},
-                                index=data.covariates)
-        return table
