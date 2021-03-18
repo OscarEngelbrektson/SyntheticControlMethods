@@ -10,7 +10,7 @@ As with all approaches to causal inference on non-experimental data, valid concl
      pip install SyntheticControlMethods
 
 ## Usage
-In this simple example, we replicate [Abadie, Diamond and Hainmueller (2015)](http://github.com) which estimates the economic impact of the 1990 German reunification on West Germany using the synthetic control method. Here is a [complete example with explanations](https://github.com/OscarEngelbrektson/SyntheticControlMethods/blob/master/examples/german_reunification.ipynb).
+In this simple example, we replicate [Abadie, Diamond and Hainmueller (2015)](http://github.com) which estimates the economic impact of the 1990 German reunification on West Germany using the synthetic control method. Here is a [complete example with explanations](https://github.com/OscarEngelbrektson/SyntheticControlMethods/blob/master/examples/user_guide.ipynb) (if you have trouble loading the notebook: [use this](https://nbviewer.jupyter.org/github/OscarEngelbrektson/SyntheticControlMethods/blob/master/examples/user_guide.ipynb)).
 
 ```python
 #Import packages
