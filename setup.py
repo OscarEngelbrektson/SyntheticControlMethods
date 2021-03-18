@@ -6,7 +6,7 @@ import sys
 from codecs import open
 
 install_requires = [
-        'numpy',
+        'numpy>=1.17',
         'scipy==1.4.1',
         'pandas',
         'cvxpy',
