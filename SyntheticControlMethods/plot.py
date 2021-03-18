@@ -114,10 +114,18 @@ class Plot(object):
         idx = 1
 
         if 'original' in panels:
+            #Determine appropriate limits for y-axis
+            max_value = max(np.max(data.treated_outcome_all),
+                            np.max(data.synth_outcome))
+            min_value = min(np.min(data.treated_outcome_all),
+                            np.min(data.synth_outcome))
+
+            #Make plot
             ax.set_title("{} vs. {}".format(treated_label, synth_label))
             ax.plot(time, synth.T, 'r--', label=synth_label)
             ax.plot(time ,data.treated_outcome_all, 'b-', label=treated_label)
             ax.axvline(data.treatment_period-1, linestyle=':', color="gray")
+            ax.set_ylim(-1.2*abs(min_value), 1.2*abs(max_value)) #Do abs() in case min is positive, or max is negative
             ax.annotate(treatment_label, 
                 #Put label below outcome if pre-treatment trajectory is decreasing, else above
                 xy=(data.treatment_period-1, data.treated_outcome[-1]*(1 + 0.2*np.sign(data.treated_outcome[-1] - data.treated_outcome[0]))),
@@ -144,7 +152,7 @@ class Plot(object):
             ax.plot(time, normalized_synth, 'r--', label=synth_label)
             ax.plot(time ,normalized_treated_outcome, 'b-', label=treated_label)
             ax.axvline(data.treatment_period-1, linestyle=':', color="gray")
-            ax.set_ylim(-1.1*most_extreme_value, 1.1*most_extreme_value)
+            ax.set_ylim(-1.2*most_extreme_value, 1.2*most_extreme_value)
             ax.annotate(treatment_label, 
                 xy=(data.treatment_period-1, 0.5*most_extreme_value),
                 xycoords='data',
@@ -154,6 +162,7 @@ class Plot(object):
             ax.set_ylabel(data.outcome_var)
             ax.set_xlabel(data.time)
             ax.legend()
+
             if idx != n_panels:
                 plt.setp(ax.get_xticklabels(), visible=False)
             idx += 1
@@ -179,6 +188,7 @@ class Plot(object):
             ax.set_ylabel(data.outcome_var)
             ax.set_xlabel(data.time)
             ax.legend()
+
             if idx != n_panels:
                 plt.setp(ax.get_xticklabels(), visible=False)
             idx += 1
@@ -211,6 +221,7 @@ class Plot(object):
             ax.set_ylabel(data.outcome_var)
             ax.set_xlabel(data.time)
             ax.legend()
+
             if idx != n_panels:
                 plt.setp(ax.get_xticklabels(), visible=False)
             idx += 1
