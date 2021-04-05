@@ -139,6 +139,7 @@ class SynthBase(object):
         self.placebo_periods_pre_treatment = None
 
 class DataProcessor(object):
+    '''Class that processes input data into variables and matrices needed for optimization'''
     
     def _process_input_data(self, dataset, 
                             outcome_var, id_var, time_var, 
@@ -280,6 +281,7 @@ class DataProcessor(object):
       
 
 class Synth(DataProcessor, Optimize, Plot, Tables, ValidityTests):
+    '''Class implementing the Synthetic Control Method'''
 
     def __init__(self, dataset, 
                 outcome_var, id_var, time_var, 
@@ -349,6 +351,7 @@ class Synth(DataProcessor, Optimize, Plot, Tables, ValidityTests):
 
 
 class DiffSynth(DataProcessor, Optimize, Plot, Tables, ValidityTests):
+    '''Class implementing the Differenced Synthetic Control Method'''
 
     def __init__(self, dataset, 
                 outcome_var, id_var, time_var, 

@@ -16,9 +16,7 @@ import numpy as np
 import pandas as pd
 
 class ValidityTests(object):
-    '''
-    This class contains all code for running validity tests for evaluating synthetic controls.
-    '''
+    '''This class is responsible for validity tests for evaluating synthetic controls.'''
 
     def in_space_placebo(self, n_optim=3):
         '''

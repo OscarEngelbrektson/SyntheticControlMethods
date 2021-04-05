@@ -9,9 +9,12 @@ data_dir = "https://raw.githubusercontent.com/OscarEngelbrektson/SyntheticContro
 df = pd.read_csv(data_dir + "smoking_data" + ".csv")
 
 #Fit Differenced Synthetic Control
-sc = Synth(df, "cigsale", "state", "year", 1989, "California", n_optim=5)
+sc = Synth(df, "cigsale", "state", "year", 1989, "California", n_optim=10, pen="auto")
 
-#Fit 
+print(sc.original_data.weight_df)
+print(sc.original_data.comparison_df)
+print(sc.original_data.pen)
+
 #Visualize
 sc.plot(["original", "pointwise", "cumulative"], treated_label="California", 
             synth_label="Synthetic California", treatment_label="Proposal 99")

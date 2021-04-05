@@ -20,9 +20,7 @@ import numpy as np
 #    pass
 
 class Plot(object):
-    '''
-    Class responsible for all plotting functionality in package
-    '''
+    '''This class is responsible for all plotting functionality'''
 
     def plot(self,
             panels, 

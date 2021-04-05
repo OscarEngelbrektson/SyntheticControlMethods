@@ -5,6 +5,7 @@ import pandas as pd
 
 class Tables(object):
     ''' This class constructs Pandas DataFrames that summarize important information about Synthetic Controls.'''
+    
     def _get_weight_df(self, data):
       '''Prepares dataframe with weight assigned to each unit in synthetic control'''
       
