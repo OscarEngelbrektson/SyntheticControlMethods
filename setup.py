@@ -8,8 +8,8 @@ from codecs import open
 install_requires = [
         'numpy>=1.17',
         'scipy==1.4.1',
-        'pandas',
-        'cvxpy',
+        'pandas>=1.1.2',
+        'cvxpy==1.1.7',
         'matplotlib>=2.2.3',
         'jinja2>=2.10'
     ]
