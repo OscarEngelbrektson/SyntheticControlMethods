@@ -252,7 +252,7 @@ class DataProcessor(object):
         #then take the unitwise mean of each covariate
         #This results in the desired (n_control x n_covariates) matrix
         control_covariates = np.array(control_data[covariates].\
-                set_index(np.arange(len(control_data[covariates])) // periods_pre_treatment).mean(level=0)).T
+                set_index(np.arange(len(control_data[covariates])) // periods_pre_treatment).groupby(level=1).mean().T
 
         return control_outcome_all, control_outcome, control_covariates
 
