@@ -5,25 +5,26 @@ import numpy as np
 from SyntheticControlMethods import Synth, DiffSynth
 
 #Import data
-data_dir = "https://raw.githubusercontent.com/OscarEngelbrektson/SyntheticControlMethods/master/examples/datasets/"
-data = pd.read_csv(data_dir + "german_reunification" + ".csv")
+#data_dir = "https://raw.githubusercontent.com/OscarEngelbrektson/SyntheticControlMethods/master/examples/datasets/"
+#data = pd.read_csv(data_dir + "german_reunification" + ".csv")
+data = pd.read_csv("/Users/OscarEngelbrektson/Documents/SyntheticControlMethods/examples/datasets/german_reunification.csv")
 #data = data.drop(columns="code", axis=1)
 
 #Fit Synthetic Control
-sc = Synth(data, "gdp", "country", "year", 1990, "West Germany", n_optim=30, pen="auto", exclude_columns=["code"], random_seed=0)
+sc = Synth(data, "gdp", "country", "year", 1990, "West Germany", n_optim=5, pen="auto", exclude_columns=["code"], random_seed=0)
 
 print(sc.original_data.weight_df)
 print(sc.original_data.comparison_df)
 print(sc.original_data.pen)
 
 #Visualize
-sc.plot(["original", "pointwise", "cumulative"], treated_label="West Germany", 
-            synth_label="Synthetic West Germany", treatment_label="German Reunification")
+#sc.plot(["original", "pointwise", "cumulative"], treated_label="West Germany", 
+#            synth_label="Synthetic West Germany", treatment_label="German Reunification")
 
 
 #In-time placebo
 #Placebo treatment period is 1982, 8 years earlier
-sc.in_time_placebo(1982)
+sc.in_time_placebo(1982, 1)
 
 #Visualize
 sc.plot(['in-time placebo'], 

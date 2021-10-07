@@ -23,4 +23,4 @@ from synth.inferences import Inferences
 class TestValidityInferences(unittest.TestCase):
 
     def test_normalize_placebos(self):
-        
+        pass
