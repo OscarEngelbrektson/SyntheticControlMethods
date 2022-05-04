@@ -191,7 +191,7 @@ class Optimize(object):
             data.in_time_placebo_w = w.value
             
         #Return loss
-        return loss
+        return loss.flatten()
 
     def _get_dsc_outcome(self, w, control_outcome, periods_pre_treatment, treated_pretreatment_outcome):
         '''Method used only by DiffSynth (DSC)
