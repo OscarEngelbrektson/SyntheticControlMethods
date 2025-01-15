@@ -458,13 +458,13 @@ class DiffSynth(DataProcessor, Optimize, Plot, Tables, ValidityTests):
         ignore_all_cols = not_diff_cols == None
 
         #Compute difference of outcome variable
-        modified_dataset[data.outcome_var] = modified_dataset.groupby(data.id)[data.outcome_var].apply(
+        modified_dataset[data.outcome_var] = modified_dataset.groupby(data.id, group_keys=False)[data.outcome_var].apply(
                                             lambda unit: unit.interpolate(method='linear', limit_direction="both")).diff()
         
         #For covariates
         for col in data.covariates:
             #Fill in missing values using unitwise linear interpolation
-            modified_dataset[col] = modified_dataset.groupby(data.id)[col].apply(
+            modified_dataset[col] = modified_dataset.groupby(data.id, group_keys=False)[col].apply(
                                     lambda unit: unit.interpolate(method='linear', limit_direction="both"))
             
             #Compute change from previous period
